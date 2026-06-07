@@ -10,7 +10,7 @@ cc-console mirrors the **Claude Code / Codex / Gemini** sessions running in your
 terminal to your phone, tablet, or any browser. Watch them live, take over with a
 tap, answer their Yes/No prompts from anywhere — the session never drops.
 
-[**🌐 Website**](https://cc.cchub.cloud) · [**⬇️ Download**](https://cc.cchub.cloud/#download) · [**🔑 Sign in**](https://app.cchub.cloud) · [**🇨🇳 中文**](#中文)
+[**🌐 Website**](https://cc.cchub.cloud) · [**⬇️ Download**](https://cc.cchub.cloud/#download) · [**🔑 Sign in**](https://app.cchub.cloud) · [**🇨🇳 中文 README**](README.zh.md)
 
 ![platforms](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-supported-7c8cff)
 [![downloads](https://img.shields.io/github/downloads/cc-console/releases/total?color=5ad1ff&label=downloads)](https://github.com/cc-console/releases/releases)
@@ -45,12 +45,13 @@ through anyone else's servers.**
 > `gemini`) on your `PATH`. Remote access additionally needs `cloudflared`.
 
 ### macOS
-Download the **[.dmg](https://cc.cchub.cloud/#download)**, drag to Applications, open.
-First launch is unsigned — right-click → **Open**, or:
-```bash
-xattr -dr com.apple.quarantine /Applications/cc-console.app
-brew install tmux cloudflared        # tmux required; cloudflared for remote
-```
+1. Download the **[.dmg](https://cc.cchub.cloud/#download)** and drag **cc-console** into Applications.
+2. The build isn't code-signed yet, so the first launch is blocked. **Open a new Terminal window** (Spotlight → type "Terminal") and run the two commands below:
+   ```bash
+   xattr -dr com.apple.quarantine /Applications/cc-console.app   # clear the unsigned-app block
+   brew install tmux cloudflared                                 # tmux is required; cloudflared only for remote access
+   ```
+3. Now open **cc-console** from Applications (or right-click the app → **Open**).
 
 ### Windows
 Download the **[.exe installer](https://cc.cchub.cloud/#download)** and run it
@@ -90,26 +91,11 @@ hosted option gives you a stable `yourname.cchub.cloud` address with zero setup.
 
 ---
 
-<a name="中文"></a>
-
-## 中文
-
-**cc-console — 把你终端里的 AI 编码会话装进手机，实时接管。**
-
-它把你电脑上正在跑的 **Claude Code / Codex / Gemini** 终端会话，实时镜像到手机和任意浏览器：随时查看、随手接管、在外面就能回它的 Yes/No，会话永不掉线。**代码和密钥不经过任何第三方服务器。**
-
-- ⚡ 实时镜像桌面终端 · 📱 手机随时接管 · 🧠 多 agent 并行
-- 🔔 后台会话需要你拍板时主动提醒；一键 **Autopilot** 自动确认长任务
-- 📊 实时 token 与花费 · 🔒 默认只在本机，远程走你自己的隧道
-
-**安装**：到 **[cc.cchub.cloud](https://cc.cchub.cloud)** 下载对应平台（macOS / Windows / Linux），双击即用。
-**Ubuntu 服务器**：注册拿设备码 → 服务器 `install.sh` 安装 → `cc-console link` 粘设备码 → `cc-console` 启动，就能用 `你的名字.cchub.cloud` 随时访问。详见 **[cc.cchub.cloud/#server](https://cc.cchub.cloud/#server)**。
-
----
-
 <div align="center">
 
-如果觉得有用，点个 ⭐ Star 支持一下 · If this is useful, a ⭐ helps a lot.
+🇨🇳 中文说明见 **[README.zh.md](README.zh.md)**.
+
+If this is useful, a ⭐ helps a lot.
 
 **[⬇️ Download](https://cc.cchub.cloud/#download)** · **[🌐 cc.cchub.cloud](https://cc.cchub.cloud)**
 
