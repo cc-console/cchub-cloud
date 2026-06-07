@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="https://cc.cchub.cloud/favicon.svg" width="72" alt="cc-console"/>
+<img src="assets/logo.png" width="76" alt="cc-console"/>
 
 # cc-console
 
@@ -16,8 +16,9 @@ tap, answer their Yes/No prompts from anywhere — the session never drops.
 [![downloads](https://img.shields.io/github/downloads/cc-console/releases/total?color=5ad1ff&label=downloads)](https://github.com/cc-console/releases/releases)
 [![stars](https://img.shields.io/github/stars/cc-console/cchub-cloud?style=social)](https://github.com/cc-console/cchub-cloud)
 
-<!-- TODO: drop a 10-second screen recording / GIF here — it's the single biggest
-     conversion + star driver. e.g. ![demo](docs/demo.gif) -->
+<br/>
+
+<img src="assets/demo.gif" width="640" alt="cc-console — take over your terminal AI agents from anywhere"/>
 
 </div>
 
