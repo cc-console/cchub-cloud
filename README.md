@@ -14,7 +14,7 @@ tap, answer their Yes/No prompts from anywhere — the session never drops.
 
 ![platforms](https://img.shields.io/badge/macOS%20·%20Windows%20·%20Linux-supported-7c8cff)
 [![downloads](https://img.shields.io/github/downloads/cc-console/releases/total?color=5ad1ff&label=downloads)](https://github.com/cc-console/releases/releases)
-[![stars](https://img.shields.io/github/stars/cc-console/cc-hub-cloud?style=social)](https://github.com/cc-console/cc-hub-cloud)
+[![stars](https://img.shields.io/github/stars/cc-console/cchub-cloud?style=social)](https://github.com/cc-console/cchub-cloud)
 
 <!-- TODO: drop a 10-second screen recording / GIF here — it's the single biggest
      conversion + star driver. e.g. ![demo](docs/demo.gif) -->
