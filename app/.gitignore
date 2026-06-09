@@ -1,0 +1,5 @@
+node_modules/
+src-tauri/target/
+src-tauri/gen/
+# Sidecar binaries are produced by scripts/prepare-sidecar.sh at build time.
+src-tauri/binaries/

@@ -1,0 +1,79 @@
+# cc-console config — copy to ~/.claude/cc-console/config.toml
+#
+# Everything here is OPTIONAL. With no config file, cc-console binds 127.0.0.1
+# only (local/LAN use, no domain needed) and the tunnel is OFF.
+#
+# There is NO default/shared host — cc-console never routes you through someone
+# else's domain. For remote access you bring your own (named mode) or use a
+# throwaway URL (quick mode). Turning the tunnel on auto-enables token auth.
+
+[tunnel]
+# "none" (default) = no tunnel. "cloudflared" = supervise a cloudflared child.
+provider = "none"
+
+# "named"   = stable hostname on YOUR OWN Cloudflare domain (recommended).
+#             Run `cloudflared tunnel login` once first.
+# "quick"   = zero-config ephemeral https://<random>.trycloudflare.com URL,
+#             changes on every restart. Good for a 5-minute demo.
+# "managed" = hosted: a stable https://<handle>.cchub.cloud address run by the
+#             cc-console service. No domain, no `cloudflared login` — just paste a
+#             device token. Requires a cc-console account (paid). See below.
+mode = "named"
+
+# Required for named mode: your own hostname (a zone you control on Cloudflare).
+# hostname = "cc.yourdomain.com"
+
+# Tunnel name created under your Cloudflare account (named mode).
+name = "cc-console"
+
+# Optional explicit path to the cloudflared binary (else found on PATH).
+# cloudflared_path = "/opt/homebrew/bin/cloudflared"
+
+# --- managed mode -----------------------------------------------------------
+# Device token from app.cchub.cloud/account (the "Device token" card). The
+# Settings → Remote UI can also paste this for you; once set it's saved to
+# ~/.claude/cc-console/device_token and reused on every restart.
+# device_token = "ccd_..."
+# control_plane = "https://app.cchub.cloud"   # override only for self-hosting
+
+# --- Quickstart -------------------------------------------------------------
+# Stable, your own domain:
+#   1) brew install cloudflared   (or apt / the Cloudflare download page)
+#   2) cloudflared tunnel login   (browser; pick your zone)
+#   3) set provider="cloudflared", mode="named", hostname="cc.yourdomain.com"
+#   4) cc-console   → it creates the tunnel + DNS route and prints the URL+token
+#
+# Just try it (no domain):
+#   1) brew install cloudflared
+#   2) set provider="cloudflared", mode="quick"
+#   3) cc-console   → prints a https://<random>.trycloudflare.com URL+token
+#
+# Hosted, stable, no domain (paid):
+#   1) brew install cloudflared
+#   2) sign up at app.cchub.cloud, pick a handle, generate a device token
+#   3) set provider="cloudflared", mode="managed", device_token="ccd_..."
+#      (or just paste the token in Settings → Remote)
+#   4) cc-console   → comes up at https://<handle>.cchub.cloud (+token)
+#
+# Headless server (no GUI, no config.toml editing):
+#   1) brew/apt install cloudflared
+#   2) sign up at app.cchub.cloud, pick a handle, generate a device token
+#   3) cc-console link        → paste the ccd_… token when prompted; it validates
+#                               and prints your https://<handle>.cchub.cloud URL
+#   4) cc-console             → managed tunnel auto-starts (the saved token implies
+#                               managed mode; no [tunnel] block needed)
+
+# --- session environment ----------------------------------------------------
+# Extra env vars for the AI CLIs (claude / codex / gemini) running inside the
+# session. The DESKTOP APP launches from the GUI, which — unlike your login
+# shell — carries none of the proxy vars you set in ~/.zshrc. So if you reach
+# Anthropic through a local proxy, `claude` inside the app can't, and its login
+# fails with "OAuth error: Failed to fetch user roles ... 403". Set them here:
+#
+# [session.env]
+# HTTPS_PROXY = "http://127.0.0.1:7897"
+# HTTP_PROXY  = "http://127.0.0.1:7897"
+# ALL_PROXY   = "http://127.0.0.1:7897"
+#
+# (Run cc-console from a terminal instead, and it inherits your shell env — this
+# is only needed for the GUI app. Restart the app after editing.)

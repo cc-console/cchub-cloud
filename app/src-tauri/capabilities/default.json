@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "default",
+  "description": "Core window + shell access for the cc-console shell.",
+  "windows": ["main"],
+  "comment": "The window navigates to the daemon at http://127.0.0.1:<port>/, a remote origin. Without listing it under `remote`, Tauri v2 won't expose IPC to those pages, so window.__TAURI__ is absent and `plugin:shell|open` (Sign in / Subscribe → system browser) silently fails. Allow the loopback daemon so the served UI can open external links.",
+  "remote": {
+    "urls": ["http://localhost:*", "http://127.0.0.1:*"]
+  },
+  "permissions": ["core:default", "shell:default", "shell:allow-open"]
+}

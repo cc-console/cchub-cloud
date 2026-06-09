@@ -1,0 +1,231 @@
+name: release
+
+# Build self-contained binaries for macOS + Linux and attach them to the
+# GitHub Release when you push a version tag (e.g. `git tag v0.1.0 && git push --tags`).
+# `workflow_dispatch` lets you build artifacts manually without a release.
+on:
+  push:
+    tags: ["v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    name: ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+          - target: aarch64-unknown-linux-gnu
+            os: ubuntu-24.04-arm   # GitHub-hosted Arm runner; adjust if unavailable
+          - target: x86_64-pc-windows-msvc
+            os: windows-2025     # standalone daemon .exe (run headless to test ConPTY)
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - name: Build
+        run: cargo build --release --target ${{ matrix.target }}
+
+      # Sign + notarize the standalone macOS binary. Skipped on other platforms and
+      # when the Apple secrets aren't set (the tar.gz is then unsigned, as before).
+      # A bare executable can't be stapled, so Gatekeeper verifies the notarization
+      # online on first run — fine for a binary installed via install.sh. Secrets are
+      # the same set the desktop job uses (see its comment for the list).
+      - name: Sign + notarize binary (macOS)
+        if: runner.os == 'macOS'
+        env:
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          set -euo pipefail
+          if [ -z "${APPLE_SIGNING_IDENTITY:-}" ]; then
+            echo "Apple secrets not configured — leaving the binary unsigned (ad-hoc)."; exit 0
+          fi
+          BIN="target/${{ matrix.target }}/release/cc-console"
+          KEYCHAIN="$RUNNER_TEMP/signing.keychain-db"
+          KPASS="$(uuidgen)"
+          security create-keychain -p "$KPASS" "$KEYCHAIN"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN"
+          security unlock-keychain -p "$KPASS" "$KEYCHAIN"
+          echo "$APPLE_CERTIFICATE" | base64 --decode > "$RUNNER_TEMP/cert.p12"
+          security import "$RUNNER_TEMP/cert.p12" -k "$KEYCHAIN" -P "$APPLE_CERTIFICATE_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KPASS" "$KEYCHAIN" >/dev/null
+          security list-keychains -d user -s "$KEYCHAIN" $(security list-keychains -d user | sed s/\"//g)
+          codesign --force --options runtime --timestamp --sign "$APPLE_SIGNING_IDENTITY" "$BIN"
+          codesign --verify --strict --verbose=2 "$BIN"
+          ditto -c -k "$BIN" "$RUNNER_TEMP/notarize.zip"
+          xcrun notarytool submit "$RUNNER_TEMP/notarize.zip" \
+            --apple-id "$APPLE_ID" --password "$APPLE_PASSWORD" --team-id "$APPLE_TEAM_ID" --wait
+          rm -f "$RUNNER_TEMP/cert.p12"
+
+      - name: Package (unix)
+        if: runner.os != 'Windows'
+        run: tar -C target/${{ matrix.target }}/release -czf cc-console-${{ matrix.target }}.tar.gz cc-console
+
+      - name: Package (windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: Compress-Archive -Path target/${{ matrix.target }}/release/cc-console.exe -DestinationPath cc-console-${{ matrix.target }}.zip
+
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: cc-console-${{ matrix.target }}
+          path: |
+            cc-console-${{ matrix.target }}.tar.gz
+            cc-console-${{ matrix.target }}.zip
+          if-no-files-found: ignore
+
+      - name: Attach to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            cc-console-${{ matrix.target }}.tar.gz
+            cc-console-${{ matrix.target }}.zip
+
+  # Phase 1 desktop shell: wraps the daemon (as a Tauri sidecar) into native
+  # installers — .dmg / .app (macOS), .deb + .AppImage (Linux), .msi + .exe
+  # (Windows). NOTE: on Windows the daemon still needs tmux at runtime, which
+  # doesn't exist there yet — that's Phase 2 (SessionBackend). The Windows
+  # installer is built here so the pipeline is ready, but mark it experimental
+  # until Phase 2 lands. Auto-updater is intentionally OFF (no signing key yet;
+  # see docs/07-cross-platform-distribution.md §5).
+  desktop:
+    name: desktop ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: aarch64-apple-darwin
+            os: macos-14
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-22.04
+          - target: x86_64-pc-windows-msvc
+            os: windows-2025
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 22
+
+      - name: Install Linux WebKit deps
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+
+      - name: Build daemon sidecar
+        shell: bash
+        env:
+          SIDECAR_TARGET: ${{ matrix.target }}
+        run: sh app/scripts/prepare-sidecar.sh
+
+      - name: Install shell deps
+        working-directory: app
+        run: npm install
+
+      - name: Build + attach installers
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # macOS: ship the desktop app UNSIGNED (ad-hoc). We deliberately do NOT
+          # pass APPLE_* here: feeding tauri-action a Developer ID cert makes it run
+          # `security import` + codesign, and a missing/malformed APPLE_CERTIFICATE
+          # secret fails the whole bundle (no .dmg is produced at all). Until a valid
+          # Developer ID cert is wired up, an ad-hoc build always succeeds and ships a
+          # .dmg; first-launch Gatekeeper is cleared by the one-liner we document on
+          # the download page:  xattr -dr com.apple.quarantine /Applications/cc-console.app
+          # (Re-add the APPLE_* env block here to turn real signing + notarization
+          # back on once the cert is valid.)
+        with:
+          projectPath: app
+          # Publish to the release only on a version tag; otherwise just build.
+          tagName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          releaseName: ${{ startsWith(github.ref, 'refs/tags/') && github.ref_name || '' }}
+          args: --target ${{ matrix.target }}
+
+      # On manual (workflow_dispatch) / non-tag runs tauri-action doesn't publish,
+      # so expose the installers as downloadable run artifacts — this is how you
+      # grab the Windows .msi/.exe to smoke-test ConPTY without cutting a release.
+      - name: Upload installers (non-tag runs)
+        if: ${{ !startsWith(github.ref, 'refs/tags/') }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: cc-console-desktop-${{ matrix.target }}
+          path: |
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.dmg
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.msi
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.exe
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.deb
+            app/src-tauri/target/${{ matrix.target }}/release/bundle/**/*.AppImage
+          if-no-files-found: ignore
+
+  # Once every binary + installer is attached to the release in THIS (private) repo,
+  # mirror them to the PUBLIC download repo (cc-console/releases) under the friendly
+  # names the landing page and install.sh link to. This is exactly what running
+  # `scripts/sync-release.sh <tag>` by hand used to do — now automatic on a tag push.
+  #
+  # `needs: [build, desktop]` gates it on every matrix leg succeeding, so a partial
+  # build never publishes. The default GITHUB_TOKEN is scoped to this repo only and
+  # cannot write to cc-console/releases, so this needs a PAT in the repo secret
+  # RELEASES_SYNC_TOKEN with: contents:write on cc-console/releases AND
+  # contents:read on cc-console/cc.console (a classic token with `repo` scope, or a
+  # fine-grained token granting both, works).
+  sync:
+    name: sync to public download repo
+    needs: [build, desktop]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Mirror release assets to cc-console/releases (with retries)
+        env:
+          GH_TOKEN: ${{ secrets.RELEASES_SYNC_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+          if [ -z "${GH_TOKEN:-}" ]; then
+            echo "::error::RELEASES_SYNC_TOKEN is not set — add a PAT with write access to cc-console/releases. Skipping publish." >&2
+            exit 1
+          fi
+          # GitHub asset download/upload occasionally drops the connection
+          # (HTTP/2 PROTOCOL_ERROR, 5xx). The sync script is idempotent
+          # (--clobber), so just retry the whole thing with backoff.
+          for attempt in 1 2 3 4 5; do
+            echo "── sync attempt $attempt/5 ──"
+            if scripts/sync-release.sh "$TAG"; then
+              echo "✓ published cc-console/releases @ $TAG on attempt $attempt"
+              exit 0
+            fi
+            echo "attempt $attempt failed; retrying in $((attempt * 10))s…" >&2
+            sleep $((attempt * 10))
+          done
+          echo "::error::sync failed after 5 attempts" >&2
+          exit 1

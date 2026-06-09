@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>cc-console — Usage</title>
+  <script>
+    /* shared theme (with the console, via localStorage) + embed mode when shown inside Settings */
+    (function () { try {
+      var m = localStorage.getItem('cc-theme') || 'system';
+      var light = m === 'light' || (m === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+      if (light) document.documentElement.classList.add('light');
+      if (location.search.indexOf('embed') >= 0) document.documentElement.classList.add('embed');
+    } catch (e) {} })();
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090a0e;
+      --panel: rgba(255,255,255,0.045);
+      --panel-2: rgba(255,255,255,0.075);
+      --panel-solid: #13151c;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.15);
+      --text: #e8eaf1;
+      --text-dim: #9aa1af;
+      --text-faint: #646c79;
+      --accent: #7c8cff;
+      --accent-grad: linear-gradient(135deg, #6d83ff, #b07cff);
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --radius: 14px;
+      --radius-sm: 9px;
+    }
+    :root.light {
+      color-scheme: light;
+      --bg: #f3f5f9;
+      --panel: rgba(0,0,0,0.04);
+      --panel-2: rgba(0,0,0,0.07);
+      --panel-solid: #ffffff;
+      --border: rgba(0,0,0,0.10);
+      --border-strong: rgba(0,0,0,0.20);
+      --text: #1b2230;
+      --text-dim: #586273;
+      --text-faint: #98a3b3;
+      --accent: #5566ee;
+    }
+    :root.light header { background: rgba(255,255,255,0.72); }
+    :root.light tbody tr:hover { background: rgba(0,0,0,0.03); }
+    :root.light .custom button:hover { background: rgba(0,0,0,0.07); }
+    :root.light .custom input[type=date] { color-scheme: light; }
+    /* embed mode: shown inside the Settings page → drop our own chrome */
+    :root.embed header { display: none; }
+    :root.embed body::before { display: none; }
+    :root.embed main { padding-top: 14px; }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; min-height: 100%; max-width: 100%; overflow-x: hidden; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      font-size: 13px; -webkit-font-smoothing: antialiased;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background:
+        radial-gradient(1000px 560px at 8% -12%, rgba(109,131,255,0.14), transparent 60%),
+        radial-gradient(880px 540px at 102% -6%, rgba(176,124,255,0.11), transparent 55%),
+        radial-gradient(820px 680px at 50% 124%, rgba(80,120,255,0.06), transparent 60%);
+    }
+    header {
+      height: 52px; padding: 0 14px; display: flex; gap: 10px; align-items: center;
+      background: rgba(11,12,17,0.7);
+      backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0; z-index: 5;
+    }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; letter-spacing: -0.01em; white-space: nowrap; }
+    .brand-dot { width: 9px; height: 9px; border-radius: 50%;
+      background: var(--accent-grad); box-shadow: 0 0 14px rgba(124,140,255,0.9); }
+    .header-label { color: var(--text-faint); font-weight: 600; font-size: 12px; white-space: nowrap; }
+    a.back {
+      margin-left: auto; display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 13px;
+      color: var(--text-dim); text-decoration: none; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--panel); font-weight: 600; font-size: 12px;
+      transition: background .14s ease, border-color .14s ease, color .14s ease;
+    }
+    a.back:hover { color: var(--text); border-color: var(--border-strong); background: var(--panel-2); }
+
+    main { max-width: 980px; margin: 0 auto; padding: 20px 16px 64px; }
+
+    .ranges { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 18px; }
+    .pill {
+      padding: 7px 14px; border-radius: 999px; cursor: pointer; user-select: none;
+      border: 1px solid var(--border); background: var(--panel); color: var(--text-dim);
+      font-weight: 600; font-size: 12px;
+      transition: background .14s ease, border-color .14s ease, color .14s ease;
+    }
+    .pill:hover { color: var(--text); border-color: var(--border-strong); background: var(--panel-2); }
+    .pill.active { color: #fff; border-color: transparent; background: var(--accent-grad);
+      box-shadow: 0 4px 16px rgba(124,140,255,0.35); }
+    .custom { display: flex; gap: 6px; align-items: center; margin-left: 4px; }
+    .custom input[type=date] {
+      background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+      border-radius: var(--radius-sm); padding: 6px 9px; font: inherit; color-scheme: dark;
+      transition: border-color .12s ease, box-shadow .12s ease;
+    }
+    .custom input[type=date]:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,140,255,0.18); }
+    .custom button {
+      background: var(--panel-2); border: 1px solid var(--border-strong); color: var(--text);
+      border-radius: var(--radius-sm); padding: 6px 13px; font: inherit; font-weight: 600; cursor: pointer;
+      transition: background .12s ease;
+    }
+    .custom button:hover { background: rgba(255,255,255,0.11); }
+    .range-label { color: var(--text-faint); font-size: 11px; margin-left: auto; font-variant-numeric: tabular-nums; }
+
+    .cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 11px; margin-bottom: 22px; }
+    .ag { font-weight: 700; padding: 1px 9px; border-radius: 999px; font-size: 11px; border: 1px solid transparent; }
+    .ag-claude { color: #c4b5fd; background: rgba(176,124,255,0.15); border-color: rgba(176,124,255,0.32); }
+    .ag-codex  { color: #5eead4; background: rgba(16,185,129,0.15);  border-color: rgba(16,185,129,0.34); }
+    .ag-gemini { color: #93c5fd; background: rgba(59,130,246,0.17);  border-color: rgba(59,130,246,0.36); }
+    .ag-other  { color: var(--text-dim); background: var(--panel-2); }
+    .card {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px;
+      box-shadow: 0 1px 0 rgba(255,255,255,0.02);
+    }
+    .card .label { color: var(--text-faint); font-size: 11px; text-transform: uppercase; letter-spacing: 0.05em; font-weight: 700; }
+    .card .value { font-size: 23px; font-weight: 700; margin-top: 6px; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+    .card .sub { color: var(--text-dim); font-size: 11px; margin-top: 3px; font-variant-numeric: tabular-nums; }
+    .card.cost { border-color: rgba(124,140,255,0.28); background: linear-gradient(135deg, rgba(109,131,255,0.10), rgba(176,124,255,0.05)); }
+    .card.cost .value { background: var(--accent-grad); -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent; }
+
+    section {
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      padding: 16px 18px; margin-bottom: 18px;
+      backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
+    }
+    section h2 { margin: 0 0 14px; font-size: 11px; font-weight: 700; color: var(--text-dim);
+      text-transform: uppercase; letter-spacing: 0.12em; }
+
+    /* bar chart */
+    .chart { width: 100%; }
+    .chart .bar { fill: url(#barGrad); transition: fill .12s ease; }
+    .chart .bar:hover { fill: #b07cff; }
+    .chart text { fill: var(--text-faint); font-size: 10px; }
+    .chart .gridline { stroke: var(--border); stroke-width: 1; }
+
+    .table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; margin: 0 -4px; }
+    table { width: 100%; border-collapse: collapse; font-size: 12px; }
+    th, td { text-align: right; padding: 8px 9px; border-bottom: 1px solid var(--border); white-space: nowrap; }
+    th { color: var(--text-faint); font-weight: 700; font-size: 10px; text-transform: uppercase; letter-spacing: 0.06em; }
+    th:first-child, td:first-child { text-align: left; }
+    td { font-variant-numeric: tabular-nums; }
+    td.name { color: var(--text); font-weight: 600; max-width: 360px; overflow: hidden; text-overflow: ellipsis; }
+    td.cost { color: var(--accent); font-weight: 700; }
+    tbody tr { transition: background .1s ease; }
+    tbody tr:hover { background: rgba(255,255,255,0.03); }
+    tr:last-child td { border-bottom: none; }
+    .muted { color: var(--text-faint); }
+    .empty { color: var(--text-faint); text-align: center; padding: 30px; }
+    .loading { color: var(--text-dim); padding: 8px 0; }
+
+    /* mobile */
+    @media (max-width: 640px) {
+      header { height: 46px; padding: 0 10px; }
+      .header-label { display: none; }
+      main { padding: 14px 10px 48px; }
+      .cards { grid-template-columns: repeat(auto-fit, minmax(128px, 1fr)); gap: 9px; }
+      .card .value { font-size: 20px; }
+      .range-label { width: 100%; margin-left: 0; order: 9; }
+      section { padding: 14px 12px; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand"><span class="brand-dot"></span>cc-console</span>
+    <span class="header-label">· Token Usage</span>
+    <a class="back" href="/">← Console</a>
+  </header>
+
+  <main>
+    <div class="ranges" id="ranges">
+      <span class="pill" data-days="1">Today</span>
+      <span class="pill" data-days="7">7 days</span>
+      <span class="pill active" data-days="30">30 days</span>
+      <span class="pill" data-days="90">90 days</span>
+      <span class="pill" data-days="0">All</span>
+      <span class="custom">
+        <input type="date" id="from">
+        <span class="muted">→</span>
+        <input type="date" id="to">
+        <button id="apply">Apply</button>
+      </span>
+      <span class="range-label" id="rangeLabel"></span>
+    </div>
+
+    <div class="cards" id="cards"></div>
+
+    <section>
+      <h2>By agent</h2>
+      <div id="byProvider"></div>
+    </section>
+
+    <section>
+      <h2>Cost by day (USD)</h2>
+      <div id="chart"><div class="loading">loading…</div></div>
+    </section>
+
+    <section>
+      <h2>By model</h2>
+      <div id="byModel"></div>
+    </section>
+
+    <section>
+      <h2>By project</h2>
+      <div id="byProject"></div>
+    </section>
+  </main>
+
+  <script>
+    const fmtInt = n => (n || 0).toLocaleString('en-US');
+    const fmtUsd = n => '$' + (n || 0).toFixed(2);
+    const fmtTok = n => {
+      n = n || 0;
+      if (n >= 1e9) return (n / 1e9).toFixed(2) + 'B';
+      if (n >= 1e6) return (n / 1e6).toFixed(2) + 'M';
+      if (n >= 1e3) return (n / 1e3).toFixed(1) + 'K';
+      return '' + n;
+    };
+    const basename = p => { const s = (p || '').replace(/\/+$/, ''); const i = s.lastIndexOf('/'); return i >= 0 ? s.slice(i + 1) : s; };
+
+    let currentDays = 30;
+
+    function dayStartMs(d) { const x = new Date(d); x.setHours(0,0,0,0); return x.getTime(); }
+
+    async function load(fromMs, toMs) {
+      document.getElementById('chart').innerHTML = '<div class="loading">loading…</div>';
+      const qs = new URLSearchParams();
+      if (fromMs != null) qs.set('from', String(fromMs));
+      if (toMs != null) qs.set('to', String(toMs));
+      let data;
+      try {
+        const r = await fetch('/api/stats?' + qs.toString());
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        data = await r.json();
+      } catch (e) {
+        document.getElementById('chart').innerHTML = '<div class="empty">failed to load: ' + e.message + '</div>';
+        return;
+      }
+      render(data);
+    }
+
+    function render(d) {
+      const t = d.totals;
+      const fromD = new Date(d.from_ms), toD = new Date(d.to_ms);
+      const fmtD = x => x.toISOString().slice(0, 10);
+      document.getElementById('rangeLabel').textContent = fmtD(fromD) + ' → ' + fmtD(new Date(d.to_ms - 1));
+
+      // cards
+      const cards = [
+        { cls: 'cost', label: 'Total cost', value: fmtUsd(t.cost), sub: fmtInt(t.events) + ' requests' },
+        { label: 'Input', value: fmtTok(t.input), sub: fmtInt(t.input) + ' tok' },
+        { label: 'Output', value: fmtTok(t.output), sub: fmtInt(t.output) + ' tok' },
+        { label: 'Cache read', value: fmtTok(t.cache_read), sub: fmtInt(t.cache_read) + ' tok' },
+        { label: 'Cache write', value: fmtTok(t.cache_creation), sub: fmtInt(t.cache_creation) + ' tok' },
+      ];
+      document.getElementById('cards').innerHTML = cards.map(c =>
+        `<div class="card ${c.cls||''}"><div class="label">${c.label}</div><div class="value">${c.value}</div><div class="sub">${c.sub}</div></div>`
+      ).join('');
+
+      drawChart(d.by_day);
+      document.getElementById('byProvider').innerHTML = table(d.by_provider, 'Agent', r => providerChip(r.key));
+      document.getElementById('byModel').innerHTML = table(d.by_model, 'Model', r => r.key);
+      document.getElementById('byProject').innerHTML = table(d.by_project, 'Project', r => `<span title="${r.key}">${basename(r.key)}</span>`);
+    }
+
+    const PROVIDER_LABEL = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini' };
+    function providerChip(k) {
+      const label = PROVIDER_LABEL[k] || k;
+      const cls = PROVIDER_LABEL[k] ? k : 'other';
+      return `<span class="ag ag-${cls}">${label}</span>`;
+    }
+
+    function table(rows, head, nameFn) {
+      if (!rows || !rows.length) return '<div class="empty">no data in range</div>';
+      const body = rows.map(r => `<tr>
+        <td class="name">${nameFn(r)}</td>
+        <td class="cost">${fmtUsd(r.cost)}</td>
+        <td>${fmtInt(r.events)}</td>
+        <td class="muted">${fmtTok(r.input)}</td>
+        <td class="muted">${fmtTok(r.output)}</td>
+        <td class="muted">${fmtTok(r.cache_read)}</td>
+        <td class="muted">${fmtTok(r.cache_creation)}</td>
+      </tr>`).join('');
+      return `<div class="table-wrap"><table><thead><tr>
+        <th>${head}</th><th>Cost</th><th>Reqs</th><th>In</th><th>Out</th><th>C·read</th><th>C·write</th>
+      </tr></thead><tbody>${body}</tbody></table></div>`;
+    }
+
+    function drawChart(byDay) {
+      const el = document.getElementById('chart');
+      if (!byDay || !byDay.length) { el.innerHTML = '<div class="empty">no data in range</div>'; return; }
+      const W = el.clientWidth || 900, H = 220;
+      const padL = 44, padR = 8, padT = 10, padB = 26;
+      const iw = W - padL - padR, ih = H - padT - padB;
+      const max = Math.max(...byDay.map(r => r.cost), 0.0001);
+      const n = byDay.length;
+      const bw = Math.max(2, iw / n * 0.72);
+      const step = iw / n;
+
+      // y gridlines (4)
+      let grid = '', ylabels = '';
+      for (let i = 0; i <= 4; i++) {
+        const v = max * i / 4;
+        const y = padT + ih - (ih * i / 4);
+        grid += `<line class="gridline" x1="${padL}" y1="${y}" x2="${W-padR}" y2="${y}"/>`;
+        ylabels += `<text x="${padL-6}" y="${y+3}" text-anchor="end">$${v.toFixed(v<1?2:0)}</text>`;
+      }
+      let bars = '', xlabels = '';
+      const labelEvery = Math.ceil(n / 12);
+      byDay.forEach((r, i) => {
+        const h = Math.max(0, ih * r.cost / max);
+        const x = padL + i * step + (step - bw) / 2;
+        const y = padT + ih - h;
+        bars += `<rect class="bar" x="${x.toFixed(1)}" y="${y.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="2"><title>${r.key}: ${fmtUsd(r.cost)} · ${fmtInt(r.events)} reqs</title></rect>`;
+        if (i % labelEvery === 0 || i === n - 1) {
+          const lx = padL + i * step + step / 2;
+          xlabels += `<text x="${lx.toFixed(1)}" y="${H-8}" text-anchor="middle">${r.key.slice(5)}</text>`;
+        }
+      });
+      el.innerHTML = `<svg class="chart" viewBox="0 0 ${W} ${H}" width="100%" height="${H}">
+        <defs><linearGradient id="barGrad" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0" stop-color="#8aa0ff"/><stop offset="1" stop-color="#6d83ff"/>
+        </linearGradient></defs>
+        ${grid}${ylabels}${bars}${xlabels}
+      </svg>`;
+    }
+
+    // ---- range controls ----
+    function applyPreset(days) {
+      currentDays = days;
+      const to = dayStartMs(Date.now()) + 24*60*60*1000; // end of today (exclusive)
+      if (days === 0) { load(0, to); return; }            // All
+      if (days === 1) { load(dayStartMs(Date.now()), to); return; } // Today
+      const from = to - days * 24*60*60*1000;
+      load(from, to);
+    }
+
+    document.getElementById('ranges').addEventListener('click', e => {
+      const pill = e.target.closest('.pill');
+      if (!pill) return;
+      document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      pill.classList.add('active');
+      applyPreset(parseInt(pill.dataset.days, 10));
+    });
+
+    document.getElementById('apply').addEventListener('click', () => {
+      const f = document.getElementById('from').value, t = document.getElementById('to').value;
+      if (!f || !t) return;
+      document.querySelectorAll('.pill').forEach(p => p.classList.remove('active'));
+      const fromMs = dayStartMs(f);
+      const toMs = dayStartMs(t) + 24*60*60*1000; // inclusive end day
+      load(fromMs, toMs);
+    });
+
+    window.addEventListener('resize', () => { /* charts redraw on next load; cheap enough to ignore live */ });
+    applyPreset(30);
+  </script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+# Standalone crate: the repo root Cargo.toml is a workspace for the daemon, but
+# the desktop shell has its own deps/target and must NOT be a workspace member.
+[workspace]
+
+[package]
+name = "cc-console-app"
+version = "0.2.15"
+edition = "2021"
+description = "cc-console desktop shell"
+license = "MIT"
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+# A random local token: passed to the daemon (--token) and carried in the first
+# navigate URL (?token=…). Keeps the local webview authorised even when a managed
+# tunnel auto-enables auth, and protects that tunnel with a strong secret.
+uuid = { version = "1", features = ["v4"] }
+
+[[bin]]
+name = "cc-console-app"
+path = "src/main.rs"

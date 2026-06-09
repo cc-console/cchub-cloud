@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>cc-console — 使用指南 Guide</title>
+  <script>
+    (function () { try {
+      var m = localStorage.getItem('cc-theme') || 'system';
+      var light = m === 'light' || (m === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+      if (light) document.documentElement.classList.add('light');
+    } catch (e) {} })();
+    (function () { try {
+      var l = localStorage.getItem('cc_lang');
+      document.documentElement.dataset.lang = (l === 'zh' ? 'zh' : 'en');
+    } catch (e) { document.documentElement.dataset.lang = 'en'; } })();
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090a0e; --panel: rgba(255,255,255,0.045); --panel-2: rgba(255,255,255,0.075);
+      --border: rgba(255,255,255,0.08); --border-strong: rgba(255,255,255,0.15);
+      --text: #e8eaf1; --text-dim: #9aa1af; --text-faint: #646c79;
+      --accent: #7c8cff; --accent-grad: linear-gradient(135deg, #6d83ff, #b07cff);
+      --radius: 14px;
+    }
+    :root.light {
+      color-scheme: light;
+      --bg: #f3f5f9; --panel: rgba(0,0,0,0.04); --panel-2: rgba(0,0,0,0.07);
+      --border: rgba(0,0,0,0.10); --border-strong: rgba(0,0,0,0.20);
+      --text: #1b2230; --text-dim: #586273; --text-faint: #98a3b3; --accent: #5566ee;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; max-width: 100%; overflow-x: hidden; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      font-size: 13.5px; -webkit-font-smoothing: antialiased; line-height: 1.6;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background:
+        radial-gradient(1000px 560px at 8% -12%, rgba(109,131,255,0.12), transparent 60%),
+        radial-gradient(880px 540px at 102% -6%, rgba(176,124,255,0.09), transparent 55%);
+    }
+    header {
+      position: sticky; top: 0; z-index: 5; display: flex; align-items: center; gap: 10px; height: 52px; padding: 0 14px;
+      border-bottom: 1px solid var(--border); background: rgba(11,12,17,0.7);
+      backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    }
+    :root.light header { background: rgba(255,255,255,0.72); }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; }
+    .brand-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-grad); box-shadow: 0 0 14px rgba(124,140,255,0.9); }
+    .header-label { color: var(--text-dim); }
+    .grow { flex: 1; }
+    a.nav { display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--text-dim);
+      padding: 7px 13px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel); font-weight: 600; font-size: 12px; }
+    a.nav:hover { color: var(--text); border-color: var(--border-strong); }
+    main { max-width: 720px; margin: 0 auto; padding: 22px 16px 60px; }
+    h1.title { font-size: 24px; letter-spacing: -0.02em; margin: 8px 0 4px; }
+    .sub { color: var(--text-dim); margin: 0 0 22px; }
+    .step { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); padding: 18px 18px 16px; margin-bottom: 14px; }
+    .step-h { display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+    .badge { flex-shrink: 0; width: 30px; height: 30px; border-radius: 50%; background: var(--accent-grad); color: #fff;
+      display: grid; place-items: center; font-weight: 800; font-size: 14px; box-shadow: 0 4px 14px rgba(124,140,255,0.4); }
+    .step h2 { margin: 0; font-size: 16px; }
+    .step .en { color: var(--text-faint); font-size: 12px; font-weight: 600; }
+    p { margin: 0 0 10px; color: var(--text-dim); }
+    p.t { color: var(--text); }
+    ul { margin: 6px 0 10px; padding-left: 20px; }
+    li { margin: 4px 0; color: var(--text-dim); }
+    code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; color: var(--text); }
+    pre { background: var(--panel-2); border: 1px solid var(--border); border-radius: 9px; padding: 11px 13px; overflow-x: auto;
+      font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.5; color: var(--text); margin: 8px 0; }
+    a.lnk { color: var(--accent); text-decoration: none; } a.lnk:hover { text-decoration: underline; }
+    .cta { display: inline-block; margin-top: 4px; text-decoration: none; color: #fff; background: var(--accent-grad);
+      border-radius: 10px; padding: 10px 16px; font-weight: 700; font-size: 13.5px; box-shadow: 0 4px 16px rgba(124,140,255,0.35); }
+    .note { border-radius: 9px; padding: 10px 12px; font-size: 12.5px; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); margin: 8px 0; }
+    .note.warn { border-color: rgba(255,180,80,0.42); background: rgba(255,170,60,0.09); }
+    details { margin: 6px 0; } summary { cursor: pointer; font-weight: 600; color: var(--text); padding: 6px 0; }
+    .faq { border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel); padding: 8px 16px; }
+    /* i18n: keep both languages, show one via html[data-lang] */
+    .i18n { display: none; }
+    html[data-lang="en"] .lang-en { display: revert; }
+    html[data-lang="zh"] .lang-zh { display: revert; }
+    #lang-btn { cursor: pointer; font: inherit; }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand"><span class="brand-dot"></span>cc-console</span>
+    <span class="header-label">· <span class="i18n lang-zh">使用说明</span><span class="i18n lang-en">Guide</span></span>
+    <span class="grow"></span>
+    <button class="nav" id="lang-btn" title="中文 / English">中文</button>
+    <a class="nav" href="/remote.html"><span class="i18n lang-zh">远程</span><span class="i18n lang-en">Remote</span></a>
+    <a class="nav" href="/">← <span class="i18n lang-zh">控制台</span><span class="i18n lang-en">Console</span></a>
+  </header>
+
+  <main>
+    <h1 class="title"><span class="i18n lang-zh">从安装到手机访问</span><span class="i18n lang-en">Get started</span></h1>
+    <p class="sub"><span class="i18n lang-zh">把桌面上的 Claude / Codex / Gemini 会话带到手机、平板、任意浏览器,实时查看、随手接管。</span><span class="i18n lang-en">Bring your desktop Claude / Codex / Gemini sessions to your phone, tablet, or any browser — watch live and take over anytime.</span></p>
+
+    <div class="step">
+      <div class="step-h"><span class="badge">1</span><div><h2><span class="i18n lang-zh">安装 cc-console</span><span class="i18n lang-en">Install cc-console</span></h2></div></div>
+      <p class="t"><span class="i18n lang-zh"><b>桌面 app(推荐)</b>:从 <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a> 下载对应平台安装包,双击安装。</span><span class="i18n lang-en"><b>Desktop app (recommended):</b> download the installer for your platform from <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a> and run it.</span></p>
+      <p><span class="i18n lang-zh"><b>命令行 / 服务器</b>(macOS / Linux):</span><span class="i18n lang-en"><b>Command line / server</b> (macOS / Linux):</span></p>
+      <pre>curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh</pre>
+      <div class="note warn"><span class="i18n lang-zh"><b>macOS 首次打开提示「已损坏」?</b> 这是未签名 app 被 Gatekeeper 拦截。把 app 拖到「应用程序」后执行一次:</span><span class="i18n lang-en"><b>“cc-console is damaged” on first open (macOS)?</b> The unsigned app is blocked by Gatekeeper. Drag it into Applications, then run once:</span><br>
+        <code>xattr -dr com.apple.quarantine /Applications/cc-console.app</code></div>
+      <p style="margin-top:8px"><span class="i18n lang-zh"><b>运行依赖</b>:macOS/Linux 需要 <code>tmux</code>(<code>brew install tmux</code> / <code>sudo apt install tmux</code>)和你要用的 CLI(<code>claude</code> / <code>codex</code> / <code>gemini</code>)在 PATH 中;Windows 自带会话引擎(无需 tmux)。<b>开远程隧道</b>还需 <code>cloudflared</code>(mac <code>brew install cloudflared</code>,linux 见下方命令),桌面 app 也不自带;纯本机使用则不需要。</span><span class="i18n lang-en"><b>Requirements:</b> macOS/Linux need <code>tmux</code> (<code>brew install tmux</code> / <code>sudo apt install tmux</code>) and a CLI (<code>claude</code> / <code>codex</code> / <code>gemini</code>) on PATH; Windows ships its own session engine (no tmux). <b>Remote tunnels</b> also need <code>cloudflared</code> (mac: <code>brew install cloudflared</code>; Linux: see below) — not bundled with the desktop app; local-only use doesn't need it.</span></p>
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="badge">2</span><div><h2><span class="i18n lang-zh">登录账号</span><span class="i18n lang-en">Sign in</span></h2></div></div>
+      <p class="t"><span class="i18n lang-zh">远程访问需要登录账号(<b>公测期间免费</b>)。在设置 → <b>账号</b> 里点「登录 / 注册」,或直接访问账号页:</span><span class="i18n lang-en">Remote access needs an account (<b>free during beta</b>). In Settings → <b>Account</b> click Sign in, or go straight to the account page:</span></p>
+      <p><a class="cta" href="https://app.cchub.cloud/account" target="_blank" rel="noopener"><span class="i18n lang-zh">打开账号页</span><span class="i18n lang-en">Open account</span></a></p>
+      <ul>
+        <li><span class="i18n lang-zh">注册 / 登录(支持邮箱、GitHub、Google)。</span><span class="i18n lang-en">Sign up / sign in (email, GitHub, or Google).</span></li>
+        <li><span class="i18n lang-zh">在账号页设置一个 <b>名字 handle</b> —— 它决定你的稳定地址 <code>你的名字.cchub.cloud</code>。</span><span class="i18n lang-en">Pick a <b>handle</b> on the account page — it becomes your stable address <code>your-name.cchub.cloud</code>.</span></li>
+        <li class="muted"><span class="i18n lang-zh">公测期间免费,日后将推出订阅。</span><span class="i18n lang-en">Free during beta; subscriptions are coming later.</span></li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="badge">3</span><div><h2><span class="i18n lang-zh">一键连接远程</span><span class="i18n lang-en">Connect remote</span></h2></div></div>
+      <p class="t"><span class="i18n lang-zh">回到 app,点顶部 <b>🌐 远程 Remote</b> → <b>连接</b>。浏览器会打开授权页,点「批准」即可 —— app 自动拿到设备码、配置隧道,无需任何复制粘贴。</span><span class="i18n lang-en">Back in the app, click <b>🌐 Remote</b> → <b>Connect</b>. A browser approval page opens — click Approve, and the app fetches the device code and sets up the tunnel automatically, no copy-pasting.</span></p>
+      <p><a class="cta" href="/remote.html"><span class="i18n lang-zh">打开远程页</span><span class="i18n lang-en">Open Remote</span></a></p>
+      <p><span class="i18n lang-zh">连接成功后,你会得到一个稳定地址,例如 <code>https://你的名字.cchub.cloud</code>。</span><span class="i18n lang-en">Once connected you get a stable address like <code>https://your-name.cchub.cloud</code>.</span></p>
+      <div class="note"><span class="i18n lang-zh"><b>在 Ubuntu 服务器上?</b> 不走上面的「连接」按钮,改用<b>设备码</b>绑定 —— 先在服务器配好代理让它能连上 AI(参考 <a class="lnk" href="https://github.com/nelvko/clash-for-linux-install" target="_blank" rel="noopener">clash-for-linux-install</a>),在 <a class="lnk" href="https://app.cchub.cloud/account" target="_blank" rel="noopener">账号页</a>点「生成设备码」拿到 <code>ccd_…</code>,然后在服务器执行:</span><span class="i18n lang-en"><b>On an Ubuntu server?</b> Skip the Connect button and bind with a <b>device code</b> — first set up a proxy so the box can reach the AI (see <a class="lnk" href="https://github.com/nelvko/clash-for-linux-install" target="_blank" rel="noopener">clash-for-linux-install</a>), click “Generate device token” on the <a class="lnk" href="https://app.cchub.cloud/account" target="_blank" rel="noopener">account page</a> for <code>ccd_…</code>, then on the server run:</span>
+        <pre>cc-console link          <span class="i18n lang-zh"># 粘入 ccd_… 设备码</span><span class="i18n lang-en"># paste the ccd_… device code</span>
+cc-console               <span class="i18n lang-zh"># 启动，managed 隧道自动拉起</span><span class="i18n lang-en"># start; the managed tunnel comes up</span></pre>
+        <span class="i18n lang-zh">浏览器打开日志里的 <code>https://你的名字.cchub.cloud/?token=…</code> 即可。设备码会保存,下次开机自动重连。</span><span class="i18n lang-en">Open the <code>https://your-name.cchub.cloud/?token=…</code> printed in the logs. The code is saved and reconnects on the next boot.</span>
+        <p style="margin:10px 0 4px"><span class="i18n lang-zh"><b>常驻</b>(断开 SSH 也不掉,推荐用 systemd 用户服务):</span><span class="i18n lang-en"><b>Keep it running</b> after you disconnect (recommended — a systemd user service):</span></p>
+        <pre>mkdir -p ~/.config/systemd/user
+cat > ~/.config/systemd/user/cc-console.service &lt;&lt;EOF
+[Unit]
+After=network-online.target
+[Service]
+ExecStart=%h/.local/bin/cc-console
+Restart=on-failure
+[Install]
+WantedBy=default.target
+EOF
+systemctl --user enable --now cc-console
+sudo loginctl enable-linger $USER</pre></div>
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="badge">4</span><div><h2><span class="i18n lang-zh">在手机 / 平板上访问</span><span class="i18n lang-en">Open on your phone</span></h2></div></div>
+      <p class="t"><span class="i18n lang-zh">在手机浏览器打开你的稳定地址(首次带上日志里给出的 <code>?token=…</code>,之后会记在 cookie 里)。你会看到和桌面完全一致的实时终端 —— 同一个会话,随手接管。</span><span class="i18n lang-en">Open your stable address in a phone browser (first time, include the <code>?token=…</code> from the log; after that it's remembered in a cookie). You'll see the exact same live terminal as the desktop — the same session, ready to take over.</span></p>
+      <ul>
+        <li><span class="i18n lang-zh">多窗口并排:Claude / Codex / Gemini 一目了然,按状态颜色区分。</span><span class="i18n lang-en">Windows side by side: Claude / Codex / Gemini at a glance, colour-coded by status.</span></li>
+        <li><span class="i18n lang-zh">断线自动重连,tmux 会话不丢上下文。</span><span class="i18n lang-en">Auto-reconnect on drop; the tmux session keeps its context.</span></li>
+      </ul>
+    </div>
+
+    <div class="step">
+      <div class="step-h"><span class="badge">5</span><div><h2><span class="i18n lang-zh">Autopilot 与通知</span><span class="i18n lang-en">Autopilot &amp; alerts</span></h2></div></div>
+      <ul>
+        <li><span class="i18n lang-zh"><b>Autopilot</b>:开启后自动确认 Yes/No 提示,让 agent 连续跑长任务,你只看结果。</span><span class="i18n lang-en"><b>Autopilot:</b> turn it on to auto-confirm Yes/No prompts so your agent runs long tasks while you just review results.</span></li>
+        <li><span class="i18n lang-zh"><b>通知</b>:后台会话停下等你决定时,会用声音 + 浏览器通知 + 标签角标提醒你。</span><span class="i18n lang-en"><b>Alerts:</b> when a background session stops for your decision, it pings you with a sound, a browser notification, and a tab badge.</span></li>
+        <li><span class="i18n lang-zh"><b>用量</b>:设置 → 用量,实时 token 与花费明细。</span><span class="i18n lang-en"><b>Usage:</b> Settings → Usage for live token and cost breakdowns.</span></li>
+      </ul>
+    </div>
+
+    <h2 style="font-size:16px;margin:24px 0 8px"><span class="i18n lang-zh">常见问题</span><span class="i18n lang-en">FAQ</span></h2>
+    <div class="faq">
+      <details><summary><span class="i18n lang-zh">「已损坏,无法打开」怎么办?</span><span class="i18n lang-en">“cc-console is damaged” — how do I open it?</span></summary>
+        <p><span class="i18n lang-zh">未签名 app 被 Gatekeeper 拦。执行 <code>xattr -dr com.apple.quarantine /Applications/cc-console.app</code> 后即可打开。命令行安装(<code>install.sh</code>)不会有这个问题。</span><span class="i18n lang-en">The unsigned app is blocked by Gatekeeper. Run <code>xattr -dr com.apple.quarantine /Applications/cc-console.app</code> once, then open it. The CLI install (<code>install.sh</code>) avoids this entirely.</span></p></details>
+      <details><summary><span class="i18n lang-zh">提示需要订阅 / 无法生成设备码?</span><span class="i18n lang-en">It says a subscription is required?</span></summary>
+        <p><span class="i18n lang-zh">远程访问是付费功能。去 <a class="lnk" href="https://app.cchub.cloud/subscribe" target="_blank" rel="noopener">订阅页</a> 开通后重试。</span><span class="i18n lang-en">Remote access is a paid feature. Activate it on the <a class="lnk" href="https://app.cchub.cloud/subscribe" target="_blank" rel="noopener">subscribe page</a>, then retry.</span></p></details>
+      <details><summary><span class="i18n lang-zh">连接成功但打不开地址?</span><span class="i18n lang-en">Connected, but the address won't open?</span></summary>
+        <p><span class="i18n lang-zh">先确认在账号页设置了 handle;地址形如 <code>你的名字.cchub.cloud</code>。新地址的 DNS / 证书通常几秒内生效。</span><span class="i18n lang-en">First make sure you set a handle on the account page; the address looks like <code>your-name.cchub.cloud</code>. DNS / certs for a new address usually take a few seconds.</span></p></details>
+      <details><summary><span class="i18n lang-zh">不想要账号,只想临时分享一下?</span><span class="i18n lang-en">No account — just want to share temporarily?</span></summary>
+        <p><span class="i18n lang-zh">远程页 → 高级 → 「临时链接」,生成一次性 <code>*.trycloudflare.com</code> 地址(每次重启都变,无需账号)。</span><span class="i18n lang-en">Remote page → Advanced → Quick link generates a throwaway <code>*.trycloudflare.com</code> address (changes on every restart, no account needed).</span></p></details>
+    </div>
+  </main>
+  <script>
+    // language toggle (zh / en, default en) — flips html[data-lang]; CSS shows one.
+    (function () {
+      var btn = document.getElementById('lang-btn');
+      function setLang(l) {
+        l = (l === 'zh') ? 'zh' : 'en';
+        document.documentElement.dataset.lang = l;
+        try { localStorage.setItem('cc_lang', l); } catch (e) {}
+        if (btn) btn.textContent = (l === 'en') ? '中文' : 'EN';
+      }
+      setLang(document.documentElement.dataset.lang || 'en');
+      if (btn) btn.addEventListener('click', function () {
+        setLang(document.documentElement.dataset.lang === 'en' ? 'zh' : 'en');
+      });
+    })();
+    // In the desktop app, send external links to the system browser instead of
+    // navigating the webview away. In a normal browser this does nothing (the
+    // _blank link opens a tab as usual).
+    document.addEventListener('click', function (e) {
+      var a = e.target.closest && e.target.closest('a[target="_blank"]');
+      if (!a || !/^https?:/.test(a.href)) return;
+      try {
+        var T = window.__TAURI__;
+        if (T && T.core && T.core.invoke) {
+          e.preventDefault();
+          var href = a.href;
+          T.core.invoke('plugin:shell|open', { path: href }).catch(function () {
+            if (!window.open(href, '_blank')) location.href = href;
+          });
+        }
+      } catch (err) {}
+    });
+  </script>
+</body>
+</html>

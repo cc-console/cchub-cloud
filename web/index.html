@@ -1,0 +1,1431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>cc-console — Your AI coding sessions, in your pocket</title>
+  <script>
+    /* apply saved theme before first paint to avoid a flash of the wrong colors */
+    (function () { try {
+      var m = localStorage.getItem('cc-theme') || 'system';
+      var light = m === 'light' || (m === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+      if (light) document.documentElement.classList.add('light');
+    } catch (e) {} })();
+  </script>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090a0e;
+      --panel: rgba(255,255,255,0.045);
+      --panel-2: rgba(255,255,255,0.075);
+      --panel-solid: #13151c;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.15);
+      --text: #e8eaf1;
+      --text-dim: #9aa1af;
+      --text-faint: #646c79;
+      --accent: #7c8cff;
+      --accent-grad: linear-gradient(135deg, #6d83ff, #b07cff);
+      --ok: #34d399;
+      --warn: #fbbf24;
+      --err: #f87171;
+      --radius: 14px;
+      --radius-sm: 9px;
+      --term-bg: #06070a;
+    }
+    /* ---------- light theme (html.light, set by anti-FOUC head script + theme JS) ---------- */
+    :root.light {
+      color-scheme: light;
+      --bg: #f3f5f9;
+      --panel: rgba(0,0,0,0.04);
+      --panel-2: rgba(0,0,0,0.07);
+      --panel-solid: #ffffff;
+      --border: rgba(0,0,0,0.10);
+      --border-strong: rgba(0,0,0,0.20);
+      --text: #1b2230;
+      --text-dim: #586273;
+      --text-faint: #98a3b3;
+      --accent: #5566ee;
+      --term-bg: #ffffff;
+    }
+    :root.light body::before {
+      background:
+        radial-gradient(1000px 560px at 8% -12%, rgba(109,131,255,0.10), transparent 60%),
+        radial-gradient(880px 540px at 102% -6%, rgba(176,124,255,0.08), transparent 55%),
+        radial-gradient(820px 680px at 50% 124%, rgba(80,120,255,0.05), transparent 60%);
+    }
+    :root.light #status { background: rgba(255,255,255,0.72); }
+    :root.light .win { background: rgba(0,0,0,0.022); }
+    :root.light .win:hover { background: rgba(0,0,0,0.05); }
+    :root.light .win-idx { background: rgba(0,0,0,0.06); }
+    :root.light .chip { background: rgba(0,0,0,0.03); }
+    :root.light #windows-list::-webkit-scrollbar-thumb,
+    :root.light #term-wrap::-webkit-scrollbar-thumb,
+    :root.light .xterm-viewport::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); }
+    :root.light #fkeys { background: rgba(255,255,255,0.72); }
+    :root.light #fkeys button { background: rgba(0,0,0,0.05); }
+    :root.light #fk-pop { background: rgba(255,255,255,0.97); }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; max-width: 100%; overflow-x: hidden; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      font-size: 13px; -webkit-font-smoothing: antialiased;
+      display: flex; flex-direction: column;
+    }
+    /* ambient glow */
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background:
+        radial-gradient(1000px 560px at 8% -12%, rgba(109,131,255,0.14), transparent 60%),
+        radial-gradient(880px 540px at 102% -6%, rgba(176,124,255,0.11), transparent 55%),
+        radial-gradient(820px 680px at 50% 124%, rgba(80,120,255,0.06), transparent 60%);
+    }
+
+    /* ---------- top bar ---------- */
+    #status {
+      flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+      height: 52px; padding: 0 14px;
+      background: rgba(11,12,17,0.7);
+      backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+      border-bottom: 1px solid var(--border);
+    }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; letter-spacing: -0.01em; white-space: nowrap; }
+    .brand-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-grad); box-shadow: 0 0 14px rgba(124,140,255,0.9); }
+    .grow { flex: 1; min-width: 0; }
+
+    /* window switcher button (shown on mobile; left side) */
+    .sw-btn {
+      display: none; align-items: center; gap: 8px; max-width: 58vw;
+      height: 36px; padding: 0 11px; flex-shrink: 0;
+      background: var(--panel); border: 1px solid var(--border-strong); border-radius: 999px;
+      color: var(--text); font-size: 13px; font-weight: 600; cursor: pointer;
+      transition: background .14s ease, border-color .14s ease;
+    }
+    .sw-btn:active { background: var(--panel-2); }
+    .sw-btn.has-alert { border-color: rgba(251,146,60,0.55); color: #ffd9a8; animation: awaitPulse 1.4s ease-in-out infinite; }
+    .sw-ic { display: inline-flex; color: var(--text-dim); }
+    .sw-btn.has-alert .sw-ic { color: #ffb066; }
+    #sw-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .sw-chev { color: var(--text-dim); font-size: 10px; transition: transform .18s ease; }
+    body.win-open .sw-chev { transform: rotate(180deg); }
+
+    .badge {
+      display: inline-flex; align-items: center; gap: 6px;
+      padding: 4px 11px; border-radius: 999px;
+      font-weight: 600; font-size: 11px; white-space: nowrap;
+      border: 1px solid var(--border); background: var(--panel);
+    }
+    .badge::before {
+      content: ""; width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0;
+      background: currentColor; box-shadow: 0 0 8px currentColor;
+    }
+    .ok      { color: var(--ok);   background: rgba(52,211,153,0.10);  border-color: rgba(52,211,153,0.28); }
+    .err     { color: var(--err);  background: rgba(248,113,113,0.10); border-color: rgba(248,113,113,0.28); }
+    .pending { color: var(--warn); background: rgba(251,191,36,0.10);  border-color: rgba(251,191,36,0.28); }
+    #meta { color: var(--text-faint); font-size: 11px; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+    .icon-btn {
+      display: inline-flex; align-items: center; gap: 6px; height: 32px; padding: 0 12px;
+      border-radius: 999px; border: 1px solid var(--border); background: var(--panel);
+      color: var(--text-dim); font-size: 12px; font-weight: 600; cursor: pointer; text-decoration: none;
+      transition: background .14s ease, border-color .14s ease, color .14s ease;
+    }
+    .icon-btn:hover { background: var(--panel-2); color: var(--text); border-color: var(--border-strong); }
+    .icon-btn .ic { font-size: 13px; line-height: 1; }
+    /* autopilot ON: filled accent + soft pulse so it's obvious the daemon is auto-confirming */
+    #auto-btn.on {
+      background: var(--accent-grad); border-color: transparent; color: #fff;
+      box-shadow: 0 2px 14px rgba(124,140,255,0.45); animation: auto-pulse 2s ease-in-out infinite;
+    }
+    #auto-btn.on:hover { color: #fff; filter: brightness(1.06); }
+    @keyframes auto-pulse {
+      0%, 100% { box-shadow: 0 2px 14px rgba(124,140,255,0.4); }
+      50% { box-shadow: 0 2px 20px rgba(124,140,255,0.7); }
+    }
+
+    /* ---------- layout ---------- */
+    #main { flex: 1; display: flex; min-height: 0; padding: 12px; gap: 12px; }
+
+    /* sidebar — desktop column / mobile dropdown */
+    #sidebar {
+      width: 272px; min-width: 272px;
+      display: flex; flex-direction: column; overflow: hidden;
+      background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+    }
+    #sidebar-head {
+      display: flex; align-items: center; gap: 8px;
+      padding: 13px 14px 12px; border-bottom: 1px solid var(--border);
+    }
+    #sb-label { font-size: 11px; text-transform: uppercase; letter-spacing: 0.12em; color: var(--text-dim); font-weight: 700; }
+    #new-btn {
+      margin-left: auto; background: var(--accent-grad); color: #fff; border: 0;
+      padding: 6px 14px; border-radius: 999px; font-size: 11px; font-weight: 700; cursor: pointer;
+      box-shadow: 0 2px 12px rgba(124,140,255,0.4);
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+    }
+    #new-btn:hover { filter: brightness(1.08); box-shadow: 0 4px 18px rgba(124,140,255,0.55); transform: translateY(-1px); }
+    #new-btn:active { transform: translateY(0); }
+    #sb-collapse { margin-left: 6px; flex-shrink: 0; width: 26px; height: 24px; display: grid; place-items: center;
+      background: transparent; border: 1px solid var(--border); color: var(--text-dim); border-radius: 7px; cursor: pointer; font-size: 11px; }
+    #sb-collapse:hover { color: var(--text); border-color: var(--border-strong); }
+    /* draggable splitter between the sidebar and the terminal */
+    #sb-resize { flex: 0 0 7px; align-self: stretch; cursor: col-resize; border-radius: 4px; background: transparent; transition: background .12s ease; }
+    #sb-resize:hover, #sb-resize.drag { background: var(--accent); }
+    /* far-left handle that re-opens a collapsed sidebar */
+    #sb-expand { display: none; flex: 0 0 22px; align-self: stretch; align-items: center; justify-content: center;
+      background: var(--panel); border: 1px solid var(--border); border-radius: 9px; color: var(--text-dim); cursor: pointer; font-size: 12px; }
+    #sb-expand:hover { color: var(--text); border-color: var(--border-strong); }
+    body.sb-collapsed #sidebar, body.sb-collapsed #sb-resize { display: none; }
+    body.sb-collapsed #sb-expand { display: flex; }
+
+    #windows-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+    #windows-list::-webkit-scrollbar { width: 8px; }
+    #windows-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.1); border-radius: 4px; }
+    #windows-list::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.18); }
+    .empty { padding: 34px 14px; text-align: center; color: var(--text-faint); font-size: 12px; }
+
+    .win {
+      flex-shrink: 0;
+      position: relative; padding: 11px 12px 12px 15px;
+      border-radius: var(--radius-sm); cursor: pointer; user-select: none;
+      background: rgba(255,255,255,0.025); border: 1px solid var(--border);
+      transition: background .14s ease, border-color .14s ease, transform .08s ease;
+      overflow: hidden;
+    }
+    .win::before {
+      content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 3px;
+      background: transparent; transition: background .14s ease;
+    }
+    /* left accent bar tinted by agent type (active/awaiting states below override these) */
+    .win[data-agent="claude"]::before { background: linear-gradient(180deg,#6d83ff,#b07cff); }
+    .win[data-agent="codex"]::before  { background: linear-gradient(180deg,#10b981,#34d399); }
+    .win[data-agent="gemini"]::before { background: linear-gradient(180deg,#3b82f6,#60a5fa); }
+    .win:hover { background: rgba(255,255,255,0.055); border-color: var(--border-strong); }
+    .win:active { transform: scale(0.995); }
+    .win.active {
+      background: linear-gradient(135deg, rgba(109,131,255,0.17), rgba(176,124,255,0.09));
+      border-color: rgba(124,140,255,0.45);
+    }
+    .win.active::before { background: var(--accent-grad); }
+    .win.awaiting {
+      background: linear-gradient(135deg, rgba(251,146,60,0.18), rgba(251,191,36,0.08));
+      border-color: rgba(251,146,60,0.5);
+      animation: awaitPulse 1.4s ease-in-out infinite;
+    }
+    .win.awaiting::before { background: linear-gradient(180deg,#ffc24e,#ff8a3d); }
+    @keyframes awaitPulse {
+      0%,100% { box-shadow: 0 0 0 0 rgba(251,146,60,0); }
+      50%     { box-shadow: 0 0 0 1px rgba(251,146,60,0.5), 0 0 20px rgba(251,146,60,0.22); }
+    }
+
+    .win-row1 { display: flex; align-items: center; gap: 8px; }
+    .win-idx {
+      flex-shrink: 0; min-width: 19px; height: 19px;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700; color: var(--text-dim);
+      background: rgba(255,255,255,0.06); border-radius: 6px;
+      font-variant-numeric: tabular-nums;
+    }
+    .win-name { flex: 1; min-width: 0; font-weight: 600; font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .win-cmd {
+      flex-shrink: 1; min-width: 0; max-width: 110px; font-size: 10px; color: var(--accent);
+      font-family: ui-monospace, Menlo, monospace; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      background: rgba(124,140,255,0.13); padding: 2px 8px; border-radius: 999px;
+    }
+    /* agent-type tag (color-coded by claude/codex/gemini) */
+    .win-tag {
+      flex-shrink: 0; font-size: 10px; font-weight: 700; line-height: 1.6;
+      padding: 1px 8px; border-radius: 999px; white-space: nowrap;
+      border: 1px solid transparent;
+    }
+    .win-tag.ag-claude { color: #c4b5fd; background: rgba(176,124,255,0.15); border-color: rgba(176,124,255,0.32); }
+    .win-tag.ag-codex  { color: #5eead4; background: rgba(16,185,129,0.15);  border-color: rgba(16,185,129,0.34); }
+    .win-tag.ag-gemini { color: #93c5fd; background: rgba(59,130,246,0.17);  border-color: rgba(59,130,246,0.36); }
+    .win-tag.ag-other  {
+      color: var(--accent); background: rgba(124,140,255,0.13); border-color: transparent;
+      font-family: ui-monospace, Menlo, monospace; max-width: 110px; overflow: hidden; text-overflow: ellipsis;
+    }
+    .win-close {
+      flex-shrink: 0; width: 22px; height: 22px; padding: 0; margin: -2px -2px -2px 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 15px; line-height: 1; cursor: pointer;
+      color: var(--text-faint); background: transparent;
+      border: 1px solid transparent; border-radius: 6px;
+      transition: color .12s, background .12s, border-color .12s;
+    }
+    .win-close:hover, .win-close:active {
+      color: var(--err); background: rgba(248,113,113,0.12); border-color: rgba(248,113,113,0.30);
+    }
+    .win-rename, .win-chdir {
+      flex-shrink: 0; width: 22px; height: 22px; padding: 0; margin: -2px 0;
+      display: inline-flex; align-items: center; justify-content: center;
+      font-size: 12px; line-height: 1; cursor: pointer;
+      color: var(--text-faint); background: transparent;
+      border: 1px solid transparent; border-radius: 6px;
+      transition: color .12s, background .12s, border-color .12s;
+    }
+    .win-rename:hover, .win-rename:active,
+    .win-chdir:hover, .win-chdir:active {
+      color: var(--accent); background: rgba(124,140,255,0.12); border-color: rgba(124,140,255,0.30);
+    }
+    .win-cwd {
+      margin-top: 6px; color: var(--text-faint); font-size: 11px;
+      font-family: ui-monospace, Menlo, monospace;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    .claude-meta { margin-top: 8px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+    .chip {
+      display: inline-flex; align-items: center; gap: 4px;
+      font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 999px;
+      border: 1px solid var(--border); background: rgba(255,255,255,0.03);
+      font-variant-numeric: tabular-nums;
+    }
+    .chip-model { color: #c4b5fd; border-color: rgba(176,124,255,0.32); background: rgba(176,124,255,0.10); }
+    .chip-cost  { color: #fcd34d; border-color: rgba(251,191,36,0.3);  background: rgba(251,191,36,0.10); }
+    .chip-tok   { color: var(--text-dim); }
+    .awaiting-badge {
+      margin-top: 8px; display: flex; align-items: center;
+      font-size: 11px; color: #ffd9a8; font-weight: 600;
+      background: rgba(251,146,60,0.13); border: 1px solid rgba(251,146,60,0.32);
+      padding: 4px 9px; border-radius: 8px;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+
+    /* ---------- terminal ---------- */
+    #term-wrap {
+      flex: 1; min-height: 0; min-width: 0; padding: 12px 14px; overflow: auto;
+      -webkit-overflow-scrolling: touch;
+      background: var(--term-bg); border: 1px solid var(--border); border-radius: var(--radius);
+      box-shadow: inset 0 0 50px rgba(0,0,0,0.5);
+    }
+    #term { height: 100%; }
+    /* fat, draggable scrollbars so history is easy to reach with a finger or mouse */
+    #term-wrap::-webkit-scrollbar { width: 11px; height: 11px; }
+    #term-wrap::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.16); border-radius: 6px; border: 2px solid var(--term-bg); }
+    #term-wrap::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
+    .xterm-viewport::-webkit-scrollbar { width: 11px; }
+    .xterm-viewport::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.16); border-radius: 6px; }
+    .xterm-viewport::-webkit-scrollbar-thumb:hover { background: rgba(255,255,255,0.28); }
+    /* Fit mode: font is shrunk so all 120 cols fit the width (no horizontal pan), and
+       line-height is stretched (in JS) so the 40 rows fill the full height — so the
+       xterm viewport covers the whole screen and a vertical drag anywhere scrolls
+       scrollback (history). Keep vertical overflow scrollable as a rounding safety net. */
+    body.term-fit #term-wrap { overflow-x: hidden; overflow-y: auto; }
+    #view-btn { font-variant-numeric: tabular-nums; }
+    #view-btn .ic { font-size: 14px; }
+
+    /* scrim + floating keys are mobile-only; off by default */
+    #scrim { display: none; }
+    #fkeys { display: none; }
+
+    /* ---------- mobile ---------- */
+    @media (max-width: 720px) {
+      /* thin top bar: switcher on the left, status dot + icon buttons on the right.
+         All controls collapse to icons so the whole row fits one line on a phone. */
+      #status { height: 46px; padding: 0 7px; gap: 5px; }
+      .brand { display: none; }
+      #meta { display: none; }
+      .sw-btn { display: inline-flex; max-width: 38vw; }
+      #conn { font-size: 0; padding: 0; width: 24px; height: 24px; justify-content: center; gap: 0; flex-shrink: 0; }
+      #conn::before { width: 9px; height: 9px; }
+      /* every top-bar icon button: icon-only, square-ish, never shrink away */
+      #status .icon-btn { height: 30px; padding: 0 8px; flex-shrink: 0; }
+      #view-btn #view-lbl,
+      #theme-btn #theme-lbl,
+      #auto-btn #auto-lbl,
+      #settings-link .lbl,
+      #remote-link .lbl { display: none; }
+
+      #main { flex-direction: column; padding: 8px; gap: 8px; width: 100%; max-width: 100vw; min-width: 0; overflow: hidden; }
+      /* desktop-only layout controls: the sidebar is a dropdown on mobile */
+      #sb-resize, #sb-collapse, #sb-expand, #font-dec, #font-inc { display: none !important; }
+
+      /* sidebar → fixed dropdown anchored under the top bar; doesn't shrink the terminal */
+      #sidebar {
+        position: fixed; top: calc(env(safe-area-inset-top, 0px) + 50px); left: 8px; right: 8px;
+        width: calc(100vw - 16px); max-width: calc(100vw - 16px); min-width: 0;
+        max-height: min(70vh, 520px); z-index: 60;
+        display: none; background: var(--panel-solid);
+        border: 1px solid var(--border-strong); border-radius: 16px;
+        box-shadow: 0 22px 54px rgba(0,0,0,0.7);
+        backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+      }
+      body.win-open #sidebar { display: flex; animation: ddIn .16s ease; }
+      @keyframes ddIn { from { opacity: 0; transform: translateY(-6px) scale(.985); } to { opacity: 1; transform: none; } }
+      #windows-list { max-height: calc(min(70vh, 520px) - 52px); }
+
+      /* tap-catching scrim behind the dropdown */
+      #scrim {
+        position: fixed; inset: 0; z-index: 55;
+        background: rgba(4,5,9,0.5);
+        backdrop-filter: blur(2px); -webkit-backdrop-filter: blur(2px);
+      }
+      body.win-open #scrim { display: block; }
+
+      /* terminal fills the rest of the screen */
+      #term-wrap { width: 100%; max-width: 100%; flex: 1 1 auto; min-height: 0; padding: 10px; }
+
+      /* quick-key bar — fixed at the bottom, in the layout flow so it never covers the terminal */
+      #fkeys {
+        position: relative;             /* anchor for the ⌨ popover */
+        flex-shrink: 0; display: flex; align-items: center; justify-content: center; gap: 8px;
+        padding: 7px; padding-bottom: calc(7px + env(safe-area-inset-bottom, 0px));
+        background: var(--panel); border: 1px solid var(--border); border-radius: var(--radius);
+      }
+      #fkeys button {
+        flex: 0 0 auto; width: 52px; height: 42px; padding: 0;
+        background: rgba(255,255,255,0.06); color: var(--text);
+        border: 1px solid var(--border); border-radius: 10px;
+        font-size: 17px; font-weight: 700; line-height: 1;
+        touch-action: manipulation; user-select: none; -webkit-user-select: none;
+        transition: background .12s ease, border-color .12s ease;
+      }
+      #fkeys button:active { background: var(--accent-grad); color: #fff; border-color: transparent; }
+      body.fk-open #fk-more { background: var(--accent-grad); color: #fff; border-color: transparent; }
+      /* popover of the less-used keys, anchored above the bar (centered) */
+      #fk-pop {
+        display: none;
+        position: absolute; bottom: calc(100% + 8px); left: 50%; transform: translateX(-50%);
+        grid-template-columns: repeat(3, 48px); gap: 6px;
+        padding: 6px; border-radius: 14px;
+        background: rgba(20,22,29,0.96);
+        border: 1px solid var(--border);
+        box-shadow: 0 8px 28px rgba(0,0,0,0.5);
+      }
+      body.fk-open #fk-pop { display: grid; }
+      #fk-pop button { width: 48px; height: 42px; font-size: 13px; }
+    }
+
+    /* ---------- desktop: hide mobile chrome ---------- */
+    @media (min-width: 721px) {
+      .sw-btn, #scrim, #view-btn { display: none !important; }
+    }
+
+    /* ---------- modal ---------- */
+    #modal-backdrop {
+      position: fixed; inset: 0; background: rgba(5,6,10,0.62);
+      backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+      display: none; align-items: center; justify-content: center; z-index: 90;
+      opacity: 0; transition: opacity .15s ease;
+    }
+    #modal-backdrop.show { display: flex; opacity: 1; }
+    #modal {
+      background: linear-gradient(180deg, rgba(28,30,40,0.94), rgba(18,20,28,0.96));
+      border: 1px solid var(--border-strong); border-radius: 18px;
+      padding: 22px 22px 18px; width: min(92vw, 390px);
+      box-shadow: 0 28px 70px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.04);
+      transform: translateY(10px) scale(0.98);
+      transition: transform .18s cubic-bezier(.2,.8,.2,1);
+    }
+    #modal-backdrop.show #modal { transform: none; }
+    #modal h3 { margin: 0 0 4px; font-size: 16px; font-weight: 700; }
+    #modal .sub { margin: 0 0 12px; font-size: 12px; color: var(--text-dim); }
+    #modal label {
+      display: block; font-size: 10px; color: var(--text-dim); margin-top: 13px;
+      text-transform: uppercase; letter-spacing: 0.07em; font-weight: 700;
+    }
+    #modal input {
+      width: 100%; margin-top: 5px;
+      background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: var(--text);
+      padding: 10px 12px; border-radius: 10px; font-family: inherit; font-size: 13px;
+      transition: border-color .12s ease, box-shadow .12s ease;
+    }
+    #modal input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,140,255,0.18); }
+    /* folder browser inside the new-window modal */
+    #dir-browser {
+      margin-top: 6px; border: 1px solid var(--border); border-radius: 10px;
+      background: rgba(0,0,0,0.2); overflow: hidden;
+    }
+    #db-head {
+      display: flex; align-items: center; gap: 8px; padding: 6px 8px;
+      border-bottom: 1px solid var(--border); background: rgba(255,255,255,0.03);
+    }
+    #db-up {
+      flex-shrink: 0; width: 26px; height: 26px; padding: 0; border-radius: 7px;
+      display: inline-flex; align-items: center; justify-content: center; font-size: 13px;
+      background: var(--panel); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
+      transition: background .12s, color .12s;
+    }
+    #db-up:hover:not(:disabled) { background: var(--panel-2); color: var(--text); }
+    #db-up:disabled { opacity: 0.35; cursor: default; }
+    #db-path {
+      flex: 1; min-width: 0; font-family: ui-monospace, Menlo, monospace; font-size: 11px;
+      color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    }
+    #db-list { max-height: 184px; overflow-y: auto; }
+    #db-list::-webkit-scrollbar { width: 8px; }
+    #db-list::-webkit-scrollbar-thumb { background: rgba(255,255,255,0.12); border-radius: 4px; }
+    .db-item {
+      display: flex; align-items: center; gap: 9px; padding: 8px 11px; cursor: pointer;
+      font-size: 12.5px; color: var(--text); border-bottom: 1px solid rgba(255,255,255,0.035);
+    }
+    .db-item:last-child { border-bottom: 0; }
+    .db-item:hover { background: var(--panel-2); }
+    .db-item .db-icon { flex-shrink: 0; font-size: 13px; }
+    .db-item .db-nm { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .db-empty { padding: 16px; text-align: center; color: var(--text-faint); font-size: 12px; }
+    :root.light #db-head { background: rgba(0,0,0,0.03); }
+    :root.light .db-item { border-bottom-color: rgba(0,0,0,0.045); }
+    :root.light #db-list::-webkit-scrollbar-thumb { background: rgba(0,0,0,0.18); }
+    #modal .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+    #modal button {
+      border: 1px solid var(--border-strong); background: rgba(255,255,255,0.04);
+      color: var(--text); padding: 9px 17px; border-radius: 10px;
+      font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: filter .12s ease, background .12s ease;
+    }
+    #modal button:hover { background: rgba(255,255,255,0.08); }
+    #modal button.primary { background: var(--accent-grad); border: 0; color: #fff; box-shadow: 0 2px 12px rgba(124,140,255,0.4); }
+    #modal button.primary:hover { filter: brightness(1.08); }
+    /* agent presets in the new-window modal */
+    #agent-presets { display: flex; gap: 6px; margin-top: 5px; }
+    .agent {
+      flex: 1; cursor: pointer; font: inherit; font-size: 12px; font-weight: 700;
+      padding: 9px 0; border-radius: 10px;
+      border: 1px solid var(--border-strong); background: rgba(255,255,255,0.04); color: var(--text-dim);
+      transition: background .12s ease, color .12s ease, border-color .12s ease, box-shadow .12s ease;
+    }
+    .agent:hover { background: rgba(255,255,255,0.08); color: var(--text); }
+    .agent.active { background: var(--accent-grad); border-color: transparent; color: #fff; box-shadow: 0 2px 12px rgba(124,140,255,0.4); }
+    /* light-theme overrides for the New Window modal (these were hardcoded dark) */
+    :root.light #modal-backdrop { background: rgba(20,24,34,0.32); }
+    :root.light #modal {
+      background: linear-gradient(180deg, #ffffff, #f5f7fb);
+      box-shadow: 0 28px 70px rgba(20,30,60,0.22), 0 0 0 1px rgba(0,0,0,0.05);
+    }
+    :root.light #modal input { background: rgba(0,0,0,0.035); }
+    :root.light #dir-browser { background: rgba(0,0,0,0.025); }
+    :root.light #modal button { background: rgba(0,0,0,0.04); }
+    :root.light #modal button:hover { background: rgba(0,0,0,0.08); }
+    :root.light #modal button.primary { background: var(--accent-grad); }
+
+    /* Generic confirm/prompt dialog — the wry webview's native confirm()/prompt() are
+       no-ops, so window delete/rename silently did nothing in the desktop app. */
+    #confirm-backdrop {
+      position: fixed; inset: 0; background: rgba(5,6,10,0.62);
+      backdrop-filter: blur(7px); -webkit-backdrop-filter: blur(7px);
+      display: none; align-items: center; justify-content: center; z-index: 95;
+      opacity: 0; transition: opacity .15s ease;
+    }
+    #confirm-backdrop.show { display: flex; opacity: 1; }
+    #confirm-box {
+      background: linear-gradient(180deg, rgba(28,30,40,0.94), rgba(18,20,28,0.96));
+      border: 1px solid var(--border-strong); border-radius: 18px;
+      padding: 22px; width: min(92vw, 380px);
+      box-shadow: 0 28px 70px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.04);
+      transform: translateY(10px) scale(0.98); transition: transform .18s cubic-bezier(.2,.8,.2,1);
+    }
+    #confirm-backdrop.show #confirm-box { transform: none; }
+    #confirm-box h3 { margin: 0 0 6px; font-size: 16px; font-weight: 700; }
+    #confirm-box .sub { margin: 0 0 14px; font-size: 13px; color: var(--text-dim); white-space: pre-line; }
+    #confirm-box input {
+      width: 100%; background: rgba(0,0,0,0.3); border: 1px solid var(--border); color: var(--text);
+      padding: 10px 12px; border-radius: 10px; font-family: inherit; font-size: 13px;
+    }
+    #confirm-box input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,140,255,0.18); }
+    #confirm-box .actions { display: flex; gap: 8px; justify-content: flex-end; margin-top: 18px; }
+    #confirm-box button {
+      border: 1px solid var(--border-strong); background: rgba(255,255,255,0.04); color: var(--text);
+      padding: 9px 17px; border-radius: 10px; font-size: 12px; font-weight: 600; cursor: pointer;
+      transition: filter .12s ease, background .12s ease;
+    }
+    #confirm-box button:hover { background: rgba(255,255,255,0.08); }
+    #confirm-box button.primary { background: var(--accent-grad); border: 0; color: #fff; box-shadow: 0 2px 12px rgba(124,140,255,0.4); }
+    #confirm-box button.danger { background: linear-gradient(180deg,#ff6b6b,#e5484d); border: 0; color: #fff; box-shadow: 0 2px 12px rgba(229,72,77,0.4); }
+    #confirm-box button.primary:hover, #confirm-box button.danger:hover { filter: brightness(1.08); }
+    :root.light #confirm-backdrop { background: rgba(20,24,34,0.32); }
+    :root.light #confirm-box {
+      background: linear-gradient(180deg, #ffffff, #f5f7fb);
+      box-shadow: 0 28px 70px rgba(20,30,60,0.22), 0 0 0 1px rgba(0,0,0,0.05);
+    }
+    :root.light #confirm-box input { background: rgba(0,0,0,0.035); }
+    :root.light #confirm-box button { background: rgba(0,0,0,0.04); }
+    :root.light #confirm-box button:hover { background: rgba(0,0,0,0.08); }
+    :root.light #confirm-box button.primary { background: var(--accent-grad); }
+    :root.light .agent { background: rgba(0,0,0,0.04); }
+    :root.light .agent:hover { background: rgba(0,0,0,0.08); color: var(--text); }
+    :root.light .agent.active { background: var(--accent-grad); color: #fff; }
+  </style>
+</head>
+<body>
+  <header id="status">
+    <button id="sw-btn" class="sw-btn" aria-label="Switch window">
+      <span class="sw-ic" aria-hidden="true">
+        <svg width="15" height="15" viewBox="0 0 16 16" fill="none">
+          <rect x="1.6" y="2.4" width="12.8" height="3.1" rx="1.1" stroke="currentColor" stroke-width="1.3"/>
+          <rect x="1.6" y="7.2" width="12.8" height="6.4" rx="1.1" stroke="currentColor" stroke-width="1.3"/>
+        </svg>
+      </span>
+      <span id="sw-name">no window</span>
+      <span class="sw-chev" aria-hidden="true">▾</span>
+    </button>
+    <span class="brand"><span class="brand-dot"></span>cc-console</span>
+    <span class="grow"></span>
+    <span id="meta" class="meta"></span>
+    <span id="conn" class="badge pending">connecting…</span>
+    <button id="auto-btn" class="icon-btn" title="Autopilot — auto-confirm Claude Yes/No prompts">
+      <span class="ic" aria-hidden="true">🤖</span><span id="auto-lbl">Auto Off</span>
+    </button>
+    <button id="font-dec" class="icon-btn" title="Smaller text"><span class="ic" aria-hidden="true">A−</span></button>
+    <button id="font-inc" class="icon-btn" title="Larger text"><span class="ic" aria-hidden="true">A+</span></button>
+    <button id="view-btn" class="icon-btn" title="Terminal display mode (Fit / zoom)">
+      <span class="ic" aria-hidden="true">⤢</span><span id="view-lbl">Fit</span>
+    </button>
+    <button id="theme-btn" class="icon-btn" title="Theme (Auto / Dark / Light)">
+      <span class="ic" aria-hidden="true">🖥</span><span id="theme-lbl">Auto</span>
+    </button>
+    <a href="/remote.html" id="remote-link" class="icon-btn" title="Remote access">
+      <span class="ic">🌐</span><span class="lbl">Remote</span>
+    </a>
+    <a href="/settings.html" id="settings-link" class="icon-btn" title="Settings">
+      <span class="ic">⚙️</span><span class="lbl">Settings</span>
+    </a>
+  </header>
+
+  <div id="main">
+    <button id="sb-expand" title="Show windows">▶</button>
+    <aside id="sidebar">
+      <div id="sidebar-head">
+        <span id="sb-label">Windows</span>
+        <button id="new-btn" title="New window">+ new</button>
+        <button id="sb-collapse" title="Collapse sidebar">◀</button>
+      </div>
+      <div id="windows-list"></div>
+    </aside>
+    <div id="sb-resize" title="Drag to resize"></div>
+    <div id="scrim"></div>
+    <div id="term-wrap"><div id="term"></div></div>
+    <!-- bottom quick-key bar (mobile): fixed at the bottom, in-flow so it never covers the terminal -->
+    <div id="fkeys">
+      <button data-key="up" aria-label="Up">↑</button>
+      <button data-key="down" aria-label="Down">↓</button>
+      <button data-key="enter" aria-label="Enter">⏎</button>
+      <button id="fk-more" aria-label="More keys" title="更多按键">⌨</button>
+      <div id="fk-pop">
+        <button data-key="left" aria-label="Left">←</button>
+        <button data-key="right" aria-label="Right">→</button>
+        <button data-key="tab" aria-label="Tab">Tab</button>
+        <button data-key="esc" aria-label="Escape">Esc</button>
+        <button data-key="ctrlc" aria-label="Ctrl-C">^C</button>
+        <button data-key="ctrld" aria-label="Ctrl-D">^D</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="modal-backdrop">
+    <div id="modal">
+      <h3>New Window</h3>
+      <p class="sub">Spin up a new tmux window.</p>
+      <label>Name <input id="m-name" placeholder="optional"></label>
+      <label>Working dir <input id="m-cwd" placeholder="~/code/..." autocomplete="off" spellcheck="false"></label>
+      <div id="dir-browser">
+        <div id="db-head">
+          <button id="db-up" type="button" title="Parent folder">⬆</button>
+          <span id="db-path" title="">~</span>
+        </div>
+        <div id="db-list"></div>
+      </div>
+      <label>Agent</label>
+      <div id="agent-presets">
+        <button type="button" class="agent active" data-cmd="claude">Claude</button>
+        <button type="button" class="agent" data-cmd="codex">Codex</button>
+        <button type="button" class="agent" data-cmd="gemini">Gemini</button>
+        <button type="button" class="agent" data-cmd="">Terminal</button>
+      </div>
+      <label>Command <input id="m-cmd" value="claude" placeholder="empty = plain shell (Terminal)"></label>
+      <div class="actions">
+        <button id="m-cancel">Cancel</button>
+        <button id="m-ok" class="primary">Create</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="confirm-backdrop">
+    <div id="confirm-box">
+      <h3 id="cf-title">Confirm</h3>
+      <p class="sub" id="cf-msg"></p>
+      <input id="cf-input" type="text" autocomplete="off" spellcheck="false" style="display:none">
+      <div class="actions">
+        <button id="cf-cancel" type="button">Cancel</button>
+        <button id="cf-ok" type="button" class="primary">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/lib/xterm.js"></script>
+  <script src="/sounds.js"></script>
+  <script>
+    // ---- terminal ----
+    const term = new Terminal({
+      fontSize: 13,
+      fontFamily: 'Menlo, Monaco, "Cascadia Mono", Consolas, monospace',
+      cursorBlink: true,
+      scrollback: 50000,
+      theme: { background: '#06070a', foreground: '#e7e9ee', cursor: '#cdd3e0' },
+    });
+    term.open(document.getElementById('term'));
+
+    // One shared tmux terminal is shown on every device, so all clients MUST agree on a
+    // single geometry — otherwise each device's resize fights the others. We pin a fixed
+    // grid: wide screens show it whole, smaller screens scroll/pan. (No FitAddon.)
+    const TERM_COLS = 120, TERM_ROWS = 40;
+    term.resize(TERM_COLS, TERM_ROWS);
+
+    // ---- theme: dark / light / system (default system) ----
+    const THEMES = ['system', 'dark', 'light'];
+    const THEME_ICON = { system: '🖥', dark: '🌙', light: '☀️' };
+    const THEME_LBL  = { system: 'Auto', dark: 'Dark', light: 'Light' };
+    const mqLight = window.matchMedia('(prefers-color-scheme: light)');
+    const isLightMode = (mode) => mode === 'light' || (mode === 'system' && mqLight.matches);
+    function applyTheme(mode) {
+      const light = isLightMode(mode);
+      document.documentElement.classList.toggle('light', light);
+      term.options.theme = light
+        ? { background: '#ffffff', foreground: '#1b2230', cursor: '#3a4252', cursorAccent: '#ffffff', selectionBackground: 'rgba(86,102,238,0.25)' }
+        : { background: '#06070a', foreground: '#e7e9ee', cursor: '#cdd3e0' };
+      const tb = document.getElementById('theme-btn');
+      if (tb) { tb.querySelector('.ic').textContent = THEME_ICON[mode]; tb.querySelector('#theme-lbl').textContent = THEME_LBL[mode]; }
+    }
+    let themeMode = localStorage.getItem('cc-theme') || 'system';
+    if (!THEMES.includes(themeMode)) themeMode = 'system';
+    applyTheme(themeMode);
+    mqLight.addEventListener('change', () => { if (themeMode === 'system') applyTheme('system'); });
+    document.getElementById('theme-btn').addEventListener('click', () => {
+      themeMode = THEMES[(THEMES.indexOf(themeMode) + 1) % THEMES.length];
+      localStorage.setItem('cc-theme', themeMode);
+      applyTheme(themeMode);
+    });
+
+    // ---- autopilot (托管): daemon auto-confirms Claude Yes/No prompts ----
+    // The actual state lives on the daemon (shared across all clients & windows); the button
+    // just reflects it. We send a toggle and the daemon echoes `autopilot_changed` back.
+    let autopilot = false;
+    const autoBtn = document.getElementById('auto-btn');
+    const autoLbl = document.getElementById('auto-lbl');
+    function applyAutopilot(on) {
+      autopilot = !!on;
+      autoBtn.classList.toggle('on', autopilot);
+      autoLbl.textContent = autopilot ? 'Auto On' : 'Auto Off';
+    }
+    autoBtn.addEventListener('click', () => send({ type: 'set_autopilot', enabled: !autopilot }));
+    applyAutopilot(false);
+
+    // ---- DOM refs ----
+    const connEl = document.getElementById('conn');
+    const metaEl = document.getElementById('meta');
+    const listEl = document.getElementById('windows-list');
+    const newBtn = document.getElementById('new-btn');
+    const swBtn  = document.getElementById('sw-btn');
+    const swName = document.getElementById('sw-name');
+    const scrim  = document.getElementById('scrim');
+    const termWrap = document.getElementById('term-wrap');
+    const viewBtn  = document.getElementById('view-btn');
+    const viewLbl  = document.getElementById('view-lbl');
+
+    // ---- mobile dropdown ----
+    const isMobile = () => window.matchMedia('(max-width: 720px)').matches;
+    function revealTerminal() {
+      // The terminal is always mounted; just nudge a repaint after layout changes.
+      setTimeout(() => { try { term.refresh(0, term.rows - 1); } catch (_) {} }, 50);
+    }
+    function closeDropdown() { document.body.classList.remove('win-open'); }
+    // The left switcher button toggles the windows dropdown (mobile).
+    swBtn.addEventListener('click', (e) => { e.stopPropagation(); document.body.classList.toggle('win-open'); });
+    // Tapping the scrim (anywhere outside the dropdown) closes it.
+    scrim.addEventListener('click', closeDropdown);
+
+    const backdrop = document.getElementById('modal-backdrop');
+    const mName = document.getElementById('m-name');
+    const mCwd  = document.getElementById('m-cwd');
+    const mCmd  = document.getElementById('m-cmd');
+
+    // ---- state ----
+    const state = {
+      windows: new Map(),     // id → Window
+      activeId: null,
+      session: null,
+      version: null,
+    };
+
+    function setStatus(cls, text) {
+      connEl.className = `badge ${cls}`;
+      connEl.textContent = text;
+      connEl.title = text;          // tooltip keeps full text when collapsed to a dot on mobile
+    }
+    function refreshMeta() {
+      metaEl.textContent = state.session
+        ? `daemon ${state.version} · tmux ${state.session}`
+        : '';
+    }
+    function shortCwd(p) {
+      if (!p) return '';
+      const home = '/Users/' + (p.match(/^\/Users\/([^\/]+)/) || [])[1];
+      let s = (home && p.startsWith(home)) ? '~' + p.slice(home.length) : p;
+      // collapse middle: ~/a/b/c/d → ~/.../d
+      const parts = s.split('/');
+      if (parts.length > 3) s = parts[0] + '/.../' + parts[parts.length - 1];
+      return s;
+    }
+    function fmtCost(c) {
+      if (!c) return '$0';
+      if (c < 0.01) return '$<0.01';
+      if (c < 1) return '$' + c.toFixed(3);
+      return '$' + c.toFixed(2);
+    }
+    function tokensTotal(u) {
+      return (u.input || 0) + (u.output || 0) + (u.cache_read || 0) + (u.cache_creation || 0);
+    }
+    function fmtTokens(n) {
+      if (n < 1000) return String(n);
+      if (n < 1_000_000) return (n / 1000).toFixed(1) + 'k';
+      return (n / 1_000_000).toFixed(2) + 'M';
+    }
+    // colored agent tag for a window card
+    const AGENT_LABEL = { claude: 'Claude', codex: 'Codex', gemini: 'Gemini' };
+    function agentTag(w) {
+      const a = w.agent || 'other';
+      if (AGENT_LABEL[a]) return `<span class="win-tag ag-${a}">${AGENT_LABEL[a]}</span>`;
+      return w.current_command ? `<span class="win-tag ag-other">${escapeHtml(w.current_command)}</span>` : '';
+    }
+
+    function renderWindows() {
+      const arr = Array.from(state.windows.values()).sort((a, b) => a.index - b.index);
+      // The switcher button reflects the active window + any pending alert.
+      const act = arr.find(w => w.active);
+      const anyAwaiting = arr.some(w => w.awaiting_input);
+      swName.textContent = act ? `${act.index} · ${act.name}` : 'no window';
+      swBtn.classList.toggle('has-alert', anyAwaiting);
+      listEl.innerHTML = '';
+      if (arr.length === 0) {
+        listEl.innerHTML = '<div class="empty">No windows yet</div>';
+        return;
+      }
+      for (const w of arr) {
+        const row = document.createElement('div');
+        row.className = 'win' + (w.active ? ' active' : '') + (w.awaiting_input ? ' awaiting' : '');
+        row.dataset.id = w.id;
+        row.dataset.agent = w.agent || 'other';
+        row.innerHTML = `
+          <div class="win-row1">
+            <span class="win-idx">${w.index}</span>
+            <span class="win-name">${escapeHtml(w.name)}</span>
+            ${agentTag(w)}
+            <button class="win-rename" title="Rename window">✎</button>
+            <button class="win-chdir" title="Change working directory">📁</button>
+            ${arr.length > 1 ? `<button class="win-close" title="Close this window">×</button>` : ''}
+          </div>
+          <div class="win-cwd">${escapeHtml(shortCwd(w.cwd))}</div>
+          ${w.awaiting_input ? `
+            <div class="awaiting-badge">🔔&nbsp; waiting for you${w.awaiting_prompt ? ' — ' + escapeHtml(w.awaiting_prompt) : ''}</div>
+          ` : ''}
+          ${w.claude ? `
+            <div class="claude-meta">
+              <span class="chip chip-model">◆ ${escapeHtml(w.claude.model || '?')}</span>
+              <span class="chip chip-cost">${fmtCost(w.claude.estimated_cost)}</span>
+              <span class="chip chip-tok">${fmtTokens(tokensTotal(w.claude.total_usage || {}))} tok</span>
+            </div>
+          ` : ''}
+        `;
+        row.addEventListener('click', () => {
+          if (!w.active) send({ type: 'window_select', window_id: w.id });
+          // On mobile, picking a window closes the dropdown and reveals its terminal.
+          if (isMobile()) {
+            closeDropdown();
+            revealTerminal();
+          }
+        });
+        row.querySelector('.win-rename')?.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const cur = w.name || '';
+          const next = await uiPrompt('Rename window', cur, { title: 'Rename window' });
+          if (next == null) return;
+          const name = next.trim();
+          if (!name || name === cur) return;
+          send({ type: 'window_rename', window_id: w.id, name });
+        });
+        row.querySelector('.win-chdir')?.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const cur = w.cwd || '';
+          // Sent to the window's shell as `cd`, so it only lands when that window is
+          // at a shell prompt (not while an agent is running) — flag that in the prompt.
+          const next = await uiPrompt('New working directory (sent as cd — only works at a shell prompt)', cur, { title: 'Change directory' });
+          if (next == null) return;
+          const path = next.trim();
+          if (!path || path === cur) return;
+          send({ type: 'window_chdir', window_id: w.id, path });
+        });
+        row.querySelector('.win-close')?.addEventListener('click', async (e) => {
+          e.stopPropagation();
+          const label = w.name || ('window ' + w.index);
+          const extra = (w.current_command === 'claude' || w.claude)
+            ? '\nThis will end the agent session running in it.' : '';
+          const ok = await uiConfirm(`Close "${label}"?${extra}`, { title: 'Close window', okLabel: 'Close', danger: true });
+          if (ok) send({ type: 'window_kill', window_id: w.id });
+        });
+        listEl.appendChild(row);
+      }
+    }
+
+    function escapeHtml(s) {
+      return String(s).replace(/[&<>"']/g, c => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+      }[c]));
+    }
+
+    // ---- awaiting-input alerts ----
+    // The set of windows currently waiting on a Claude confirmation prompt.
+    const awaitingSet = new Set();
+    const origTitle = document.title;
+    let titleTimer = null, titleFlip = false;
+
+    // AudioContext can only start after a user gesture; prime it on first interaction.
+    window.addEventListener('pointerdown', primeAudioAndNotify, { once: true });
+    window.addEventListener('keydown', primeAudioAndNotify, { once: true });
+    function primeAudioAndNotify() {
+      try { window.CCSound && CCSound.ensureCtx(); } catch (_) {}
+      if ('Notification' in window && Notification.permission === 'default') {
+        Notification.requestPermission().catch(() => {});
+      }
+    }
+
+    // The "your turn" alert. The chosen sound + volume live in localStorage and are
+    // edited in Settings → Alerts; the shared engine (sounds.js) synthesizes them.
+    function beep() {
+      try { window.CCSound && CCSound.playSaved(); } catch (_) {}
+    }
+
+    function notify(name, prompt) {
+      if (!('Notification' in window) || Notification.permission !== 'granted') return;
+      try {
+        const n = new Notification(`🔔 Claude needs you · ${name}`, {
+          body: prompt || 'Waiting for your confirmation to proceed.',
+          tag: 'cc-await-' + name,       // collapse repeats for the same window
+          requireInteraction: true,
+        });
+        n.onclick = () => { window.focus(); n.close(); };
+      } catch (_) {}
+    }
+
+    function updateTitleFlash() {
+      if (awaitingSet.size > 0) {
+        if (!titleTimer) {
+          titleTimer = setInterval(() => {
+            titleFlip = !titleFlip;
+            document.title = titleFlip ? `🔔 (${awaitingSet.size}) agent needs you` : origTitle;
+          }, 900);
+        }
+      } else if (titleTimer) {
+        clearInterval(titleTimer); titleTimer = null;
+        document.title = origTitle;
+      }
+    }
+
+    // Re-derive awaitingSet from the full window map (after hello / window_list / removal).
+    function syncAwaitingFromWindows() {
+      awaitingSet.clear();
+      for (const w of state.windows.values()) if (w.awaiting_input) awaitingSet.add(w.id);
+      updateTitleFlash();
+    }
+
+    // ---- modal + folder browser ----
+    const dbList = document.getElementById('db-list');
+    const dbPath = document.getElementById('db-path');
+    const dbUp   = document.getElementById('db-up');
+    let dbParent = null;
+    const ellipsisLeft = (s, n) => (s && s.length > n) ? '…' + s.slice(-(n - 1)) : (s || '');
+    async function loadDirs(path) {
+      dbList.innerHTML = '<div class="db-empty">…</div>';
+      try {
+        const r = await fetch('/api/dirs?path=' + encodeURIComponent(path || '~'));
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        const d = await r.json();
+        // "::drives" is the Windows virtual "This PC" view listing drive roots —
+        // it isn't a real cwd, so don't put it in the input.
+        const isDrives = d.path === '::drives';
+        mCwd.value = isDrives ? '' : d.path;       // the browsed folder IS the chosen cwd
+        dbPath.textContent = isDrives ? 'This PC · 此电脑' : ellipsisLeft(d.path, 46);
+        dbPath.title = isDrives ? 'This PC' : d.path;
+        dbParent = d.parent;
+        dbUp.disabled = !d.parent;
+        if (!d.entries.length) { dbList.innerHTML = '<div class="db-empty">No subfolders here</div>'; return; }
+        dbList.innerHTML = '';
+        for (const e of d.entries) {
+          const it = document.createElement('div');
+          it.className = 'db-item';
+          // drive roots (C:\, D:\ …) get a disk icon; regular folders a folder icon
+          const isDrive = /^[A-Za-z]:[\\/]?$/.test(e.path);
+          it.innerHTML = '<span class="db-icon">' + (isDrive ? '💾' : '📁') + '</span><span class="db-nm"></span>';
+          it.querySelector('.db-nm').textContent = e.name;
+          it.addEventListener('click', () => loadDirs(e.path));
+          dbList.appendChild(it);
+        }
+        dbList.scrollTop = 0;
+      } catch (_) {
+        dbList.innerHTML = '<div class="db-empty">Can’t open this folder</div>';
+      }
+    }
+    dbUp.addEventListener('click', () => { if (dbParent) loadDirs(dbParent); });
+    // typing a path + Enter jumps the browser there (type/paste any path, incl.
+    // another drive like D:\proj on Windows).
+    mCwd.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); loadDirs(mCwd.value.trim()); } });
+    // Tapping the breadcrumb drops into the editable path field so it's obvious you
+    // can type/paste a path rather than only click through folders.
+    dbPath.style.cursor = 'pointer';
+    dbPath.title = 'Click to edit the path';
+    dbPath.addEventListener('click', () => { mCwd.focus(); mCwd.select(); });
+
+    // agent presets → set the command. "Terminal" (data-cmd="") leaves the command
+    // empty, so the new window just opens your OS shell (zsh/bash on macOS/Linux,
+    // PowerShell on Windows) — a plain terminal, not an agent. You can still type
+    // any custom command in the Command field below.
+    const agentBtns = document.querySelectorAll('.agent');
+    function syncAgentHighlight() {
+      const v = mCmd.value.trim();
+      // A preset is active when its command equals the field — including Terminal
+      // (empty data-cmd) when the field is empty.
+      agentBtns.forEach(b => b.classList.toggle('active', b.dataset.cmd === v));
+    }
+    agentBtns.forEach(b => b.addEventListener('click', () => {
+      mCmd.value = b.dataset.cmd;   // '' for Terminal → plain shell
+      syncAgentHighlight();
+    }));
+    mCmd.addEventListener('input', syncAgentHighlight);
+
+    function openModal() {
+      closeDropdown();                  // tuck the mobile dropdown away behind the modal
+      mName.value = ''; mCmd.value = 'claude';
+      syncAgentHighlight();             // default to the Claude preset
+      const last = localStorage.getItem('cc-last-cwd') || '~';
+      mCwd.value = last;
+      backdrop.classList.add('show');
+      loadDirs(last);                   // open the browser at the remembered path
+      setTimeout(() => mName.focus(), 50);
+    }
+    function closeModal() { backdrop.classList.remove('show'); }
+    // Stop the click from also toggling the windows dropdown (the head wraps this button).
+    newBtn.addEventListener('click', (e) => { e.stopPropagation(); openModal(); });
+    document.getElementById('m-cancel').addEventListener('click', closeModal);
+    document.getElementById('m-ok').addEventListener('click', () => {
+      const cwd = mCwd.value.trim();
+      const msg = { type: 'window_create' };
+      if (mName.value.trim()) msg.name = mName.value.trim();
+      if (cwd) { msg.cwd = cwd; localStorage.setItem('cc-last-cwd', cwd); }  // remember for next time
+      if (mCmd.value.trim()) msg.cmd = mCmd.value.trim();
+      send(msg);
+      closeModal();
+    });
+    backdrop.addEventListener('click', e => { if (e.target === backdrop) closeModal(); });
+
+    // In-page confirm/prompt. The wry webview's native window.confirm()/prompt() are
+    // no-ops (they return false/null without showing), so window delete/rename silently
+    // did nothing in the desktop app. These work in both the app and a real browser.
+    const cfBackdrop = document.getElementById('confirm-backdrop');
+    const cfTitle = document.getElementById('cf-title');
+    const cfMsg = document.getElementById('cf-msg');
+    const cfInput = document.getElementById('cf-input');
+    const cfOk = document.getElementById('cf-ok');
+    const cfCancel = document.getElementById('cf-cancel');
+    let cfResolve = null;
+    function cfClose(val) {
+      cfBackdrop.classList.remove('show');
+      const r = cfResolve; cfResolve = null;
+      if (r) r(val);
+    }
+    function uiConfirm(message, opts = {}) {
+      return new Promise((resolve) => {
+        cfResolve = resolve;
+        cfTitle.textContent = opts.title || 'Confirm';
+        cfMsg.textContent = message || ''; cfMsg.style.display = message ? '' : 'none';
+        cfInput.style.display = 'none';
+        cfOk.textContent = opts.okLabel || 'OK';
+        cfOk.className = opts.danger ? 'danger' : 'primary';
+        cfBackdrop.classList.add('show');
+        setTimeout(() => cfOk.focus(), 30);
+      });
+    }
+    function uiPrompt(message, defaultVal = '', opts = {}) {
+      return new Promise((resolve) => {
+        cfResolve = resolve;
+        cfTitle.textContent = opts.title || 'Input';
+        cfMsg.textContent = message || ''; cfMsg.style.display = message ? '' : 'none';
+        cfInput.style.display = ''; cfInput.value = defaultVal || '';
+        cfOk.textContent = opts.okLabel || 'OK'; cfOk.className = 'primary';
+        cfBackdrop.classList.add('show');
+        setTimeout(() => { cfInput.focus(); cfInput.select(); }, 30);
+      });
+    }
+    cfOk.addEventListener('click', () => cfClose(cfInput.style.display === 'none' ? true : cfInput.value));
+    cfCancel.addEventListener('click', () => cfClose(cfInput.style.display === 'none' ? false : null));
+    cfBackdrop.addEventListener('click', e => { if (e.target === cfBackdrop) cfCancel.click(); });
+    cfInput.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); cfOk.click(); } });
+    document.addEventListener('keydown', e => { if (cfResolve && e.key === 'Escape') { e.preventDefault(); cfCancel.click(); } });
+
+    function expandHome(p) {
+      if (p.startsWith('~/')) {
+        // best-effort: backend will accept absolute paths; we strip ~ if we can't expand
+        const m = state.session && state.session.match(/^[^:]+/);
+        return p; // let tmux interpret ~ via shell? Actually tmux -c expects abs path.
+      }
+      return p;
+    }
+
+    // ---- WS ----
+    const wsUrl = `${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/ws`;
+    let ws = null;
+    let reconnectDelay = 1000;
+    const MAX_DELAY = 30000;
+
+    function send(obj) {
+      if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify(obj));
+      }
+    }
+
+    function connect() {
+      setStatus('pending', 'connecting…');
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        setStatus('ok', 'connected');
+        reconnectDelay = 1000;
+        const { cols, rows } = term;
+        ws.send(JSON.stringify({ type: 'resize', cols, rows }));
+      };
+
+      ws.onmessage = (ev) => {
+        let msg;
+        try { msg = JSON.parse(ev.data); }
+        catch { console.error('bad msg', ev.data); return; }
+        handle(msg);
+      };
+
+      ws.onclose = (e) => {
+        setStatus('err', `disconnected (${e.code}) · retry in ${reconnectDelay / 1000}s`);
+        setTimeout(connect, reconnectDelay);
+        reconnectDelay = Math.min(reconnectDelay * 2, MAX_DELAY);
+      };
+
+      ws.onerror = (e) => console.error('ws error', e);
+    }
+
+    function handle(msg) {
+      switch (msg.type) {
+        case 'hello': {
+          state.version = msg.daemon_version;
+          state.session = msg.tmux_session;
+          state.activeId = msg.active_window_id || null;
+          state.windows.clear();
+          for (const w of msg.windows || []) state.windows.set(w.id, w);
+          applyAutopilot(!!msg.autopilot);
+          refreshMeta();
+          syncAwaitingFromWindows();
+          renderWindows();
+          break;
+        }
+        case 'output': {
+          const bin = atob(msg.bytes);
+          const arr = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) arr[i] = bin.charCodeAt(i);
+          term.write(arr);
+          break;
+        }
+        case 'window_list': {
+          state.windows.clear();
+          for (const w of msg.windows || []) state.windows.set(w.id, w);
+          syncAwaitingFromWindows();
+          renderWindows();
+          break;
+        }
+        case 'window_created': {
+          state.windows.set(msg.window.id, msg.window);
+          renderWindows();
+          break;
+        }
+        case 'window_removed': {
+          state.windows.delete(msg.window_id);
+          awaitingSet.delete(msg.window_id);
+          updateTitleFlash();
+          renderWindows();
+          break;
+        }
+        case 'window_renamed': {
+          const w = state.windows.get(msg.window_id);
+          if (w) { w.name = msg.name; renderWindows(); }
+          break;
+        }
+        case 'window_active_changed': {
+          for (const w of state.windows.values()) w.active = (w.id === msg.window_id);
+          state.activeId = msg.window_id;
+          renderWindows();
+          break;
+        }
+        case 'usage_delta': {
+          const w = state.windows.get(msg.window_id);
+          if (w) { w.claude = msg.claude; renderWindows(); }
+          break;
+        }
+        case 'awaiting_input': {
+          const w = state.windows.get(msg.window_id);
+          if (w) {
+            w.awaiting_input = msg.awaiting;
+            w.awaiting_prompt = msg.prompt || null;
+          }
+          if (msg.awaiting) {
+            awaitingSet.add(msg.window_id);
+            beep();
+            notify(w ? w.name : 'window', msg.prompt);
+          } else {
+            awaitingSet.delete(msg.window_id);
+          }
+          updateTitleFlash();
+          renderWindows();
+          break;
+        }
+        case 'autopilot_changed': {
+          applyAutopilot(msg.enabled);
+          break;
+        }
+        case 'error': {
+          console.error('server:', msg.message);
+          break;
+        }
+        default:
+          console.warn('unknown msg type', msg.type, msg);
+      }
+    }
+
+    // ---- xterm I/O ----
+    // CJK IME workaround: with an input method, xterm 5.x can emit a truncated
+    // onData for a committed composition (the first characters get dropped — you
+    // type 三个字 and only the 3rd shows). We take composition over: ignore the
+    // partial onData while composing, and on `compositionend` send the full
+    // committed string from the *native* event, then drop the one (truncated)
+    // onData xterm fires right after the commit so we don't double-send.
+    let imeComposing = false, dropNextData = false;
+    const imeTextarea = term.textarea || (term.element && term.element.querySelector('.xterm-helper-textarea'));
+    if (imeTextarea) {
+      imeTextarea.addEventListener('compositionstart', () => { imeComposing = true; });
+      imeTextarea.addEventListener('compositionend', (e) => {
+        imeComposing = false;
+        if (e.data) {
+          send({ type: 'input', text: e.data });
+          dropNextData = true;                            // swallow xterm's post-commit echo
+          setTimeout(() => { dropNextData = false; }, 0); // safety: never eat a later keystroke
+        }
+      });
+    }
+    term.onData(data => {
+      if (imeComposing) return;                           // ignore mid-composition partials
+      if (dropNextData) { dropNextData = false; return; } // ignore the truncated post-commit onData
+      send({ type: 'input', text: data });
+    });
+
+    // ---- copy / paste ----
+    // xterm's built-in clipboard relies on a native `paste` event / an OS Edit menu.
+    // The wry desktop webview on macOS has neither (no menu bar → Cmd+V is swallowed
+    // and no paste event ever fires), so paste was dead in the desktop app — and the
+    // shared geometry path never wired up a fallback for the browser either. We own
+    // copy/paste here via the async Clipboard API so both behave identically.
+    function sendPaste(text) {
+      if (!text) return;
+      text = text.replace(/\r\n/g, '\r').replace(/\n/g, '\r');   // newlines → CR, like xterm
+      const bracketed = term.modes && term.modes.bracketedPasteMode; // app asked for bracketed paste
+      send({ type: 'input', text: bracketed ? '\x1b[200~' + text + '\x1b[201~' : text });
+    }
+    let kbPasteHandled = false;
+    term.attachCustomKeyEventHandler((e) => {
+      if (e.type !== 'keydown') return true;
+      const key = (e.key || '').toLowerCase();
+      // Paste: Cmd+V (mac) or Ctrl+Shift+V (linux/win terminal convention).
+      const paste = (e.metaKey && !e.ctrlKey && !e.altKey && key === 'v')
+                 || (e.ctrlKey && e.shiftKey && key === 'v');
+      if (paste && navigator.clipboard && navigator.clipboard.readText) {
+        kbPasteHandled = true;                          // suppress the duplicate paste event (browser)
+        setTimeout(() => { kbPasteHandled = false; }, 120);
+        navigator.clipboard.readText().then(sendPaste).catch(() => {});
+        return false;                                   // we handled it; don't let xterm act
+      }
+      // Copy: Cmd+C / Ctrl+Shift+C — only when text is selected, otherwise let the
+      // keystroke through so a bare Ctrl+C still sends SIGINT to the program.
+      const copy = (e.metaKey && !e.ctrlKey && !e.altKey && key === 'c')
+                || (e.ctrlKey && e.shiftKey && key === 'c');
+      if (copy) {
+        const sel = term.getSelection();
+        if (sel && navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(sel).catch(() => {});
+          return false;
+        }
+        return true;
+      }
+      return true;
+    });
+    // Right-click / context-menu paste, and browsers that route Cmd+V as a real paste
+    // event: own it in the capture phase so xterm's own handler can't double-insert.
+    if (term.element) {
+      term.element.addEventListener('paste', (e) => {
+        e.preventDefault();
+        e.stopImmediatePropagation();
+        if (kbPasteHandled) return;                     // the keydown path already pasted
+        const text = (e.clipboardData && e.clipboardData.getData('text')) || '';
+        sendPaste(text);
+      }, true);
+    }
+
+    // ---- mobile floating quick-keys: phones have no arrow keys, but Claude Code menus need them ----
+    // ↑ ↓ ⏎ live on a draggable translucent pill; the rest hide behind ⌨ to save vertical space.
+    const KEYSEQ = {
+      up: '\x1b[A', down: '\x1b[B', right: '\x1b[C', left: '\x1b[D',
+      tab: '\t', esc: '\x1b', enter: '\r',
+      ctrlc: '\x03', ctrld: '\x04',
+    };
+    const fkeys = document.getElementById('fkeys');
+    fkeys.addEventListener('click', (e) => {
+      const btn = e.target.closest('button');
+      if (!btn) return;
+      if (btn.id === 'fk-more') { document.body.classList.toggle('fk-open'); return; }
+      const seq = KEYSEQ[btn.dataset.key];
+      if (seq == null) return;
+      send({ type: 'input', text: seq });
+    });
+
+    // Geometry is fixed; we still report it once so the shared tmux matches our grid.
+    term.onResize(({ cols, rows }) => send({ type: 'resize', cols, rows }));
+
+    // ---- terminal display mode (mobile) ----
+    // The 120x40 grid never changes (so the shared tmux geometry is untouched); we only
+    // change the *font size*. "Fit" shrinks it so the whole grid fits the screen width
+    // (no horizontal pan, like the desktop view) — and because the current screen then
+    // fits vertically too, a finger drag scrolls xterm's scrollback (history). The zoom
+    // levels render bigger with horizontal+vertical panning of the current screen.
+    const VIEW_MODES = [
+      { id: 'fit',  label: 'Fit' },
+      { id: 'z100', label: '100%', fs: 13 },
+      { id: 'z150', label: '150%', fs: 19 },
+    ];
+    let viewIdx = VIEW_MODES.findIndex(m => m.id === (localStorage.getItem('cc-view') || 'fit'));
+    if (viewIdx < 0) viewIdx = 0;
+    let cellRatio = null; // px cell-width per 1px font-size (monospace → linear & stable)
+    function measureCellRatio() {
+      if (cellRatio != null) return cellRatio;
+      const scr = document.querySelector('#term .xterm-screen');
+      if (scr) {
+        const w = scr.getBoundingClientRect().width;
+        if (w > 0) cellRatio = (w / term.cols) / term.options.fontSize;
+      }
+      return cellRatio || 0.6;
+    }
+    function fitFontSize() {
+      const innerW = (termWrap.clientWidth || window.innerWidth) - 22; // minus h-padding
+      const fs = innerW / term.cols / measureCellRatio();
+      return Math.max(3, Math.min(13, Math.round(fs * 10) / 10));
+    }
+    function applyView() {
+      const m = VIEW_MODES[viewIdx];
+      viewLbl.textContent = m.label;
+      if (!isMobile()) {                       // desktop: natural grid at the user's font size
+        document.body.classList.remove('term-fit');
+        term.options.lineHeight = 1;
+        const uf = window.__userFont || 13;    // A−/A+ override the default 13px
+        // Force xterm to re-measure the cell even when the font size is unchanged.
+        // Browser zoom (Cmd +/-) rescales the rendered glyphs WITHOUT changing
+        // fontSize, but xterm caches the old cell dimensions — so the cursor and
+        // freshly-typed text drift up from where the glyphs actually paint. Nudging
+        // fontSize makes xterm recompute metrics at the current zoom level.
+        term.options.fontSize = uf + 0.001;
+        term.options.fontSize = uf;
+        term.refresh(0, term.rows - 1);
+        return;
+      }
+      if (m.id === 'fit') {
+        document.body.classList.add('term-fit');
+        term.options.lineHeight = 1;           // measure rows at natural spacing first
+        term.options.fontSize = fitFontSize();
+        setTimeout(() => {
+          try {
+            // Stretch line-height so the 40 rows fill the viewport height (no blank
+            // lower half) — the grid (120x40) is untouched, only pixel spacing changes.
+            const screen = document.querySelector('#term .xterm-screen');
+            const avail = termWrap.clientHeight - 20; // minus vertical padding
+            if (screen) {
+              const h1 = screen.getBoundingClientRect().height; // 40 rows @ lineHeight 1
+              if (h1 > 0 && avail > h1 + 2) term.options.lineHeight = Math.min(4, avail / h1);
+            }
+            term.scrollToBottom();
+            term.refresh(0, term.rows - 1);
+          } catch (_) {}
+        }, 40);
+      } else {
+        document.body.classList.remove('term-fit');
+        term.options.lineHeight = 1;
+        term.options.fontSize = m.fs;
+        setTimeout(() => { try { term.scrollToBottom(); term.refresh(0, term.rows - 1); } catch (_) {} }, 30);
+      }
+    }
+    viewBtn.addEventListener('click', () => {
+      viewIdx = (viewIdx + 1) % VIEW_MODES.length;
+      localStorage.setItem('cc-view', VIEW_MODES[viewIdx].id);
+      applyView();
+    });
+
+    // ---- sidebar: collapse to the far left + drag-to-resize (desktop) ----
+    (function () {
+      const main = document.getElementById('main'), sb = document.getElementById('sidebar'),
+            rz = document.getElementById('sb-resize'), col = document.getElementById('sb-collapse'),
+            exp = document.getElementById('sb-expand');
+      const savedW = parseInt(localStorage.getItem('cc-sb-w') || '', 10);
+      if (savedW >= 180 && savedW <= 520) { sb.style.width = savedW + 'px'; sb.style.minWidth = savedW + 'px'; }
+      if (localStorage.getItem('cc-sb-collapsed') === '1') document.body.classList.add('sb-collapsed');
+      function refit() { try { applyView(); } catch (e) {} window.dispatchEvent(new Event('resize')); }
+      col.addEventListener('click', () => { document.body.classList.add('sb-collapsed'); localStorage.setItem('cc-sb-collapsed', '1'); refit(); });
+      exp.addEventListener('click', () => { document.body.classList.remove('sb-collapsed'); localStorage.setItem('cc-sb-collapsed', '0'); refit(); });
+      let drag = false;
+      rz.addEventListener('mousedown', (e) => { drag = true; rz.classList.add('drag'); document.body.style.userSelect = 'none'; e.preventDefault(); });
+      window.addEventListener('mousemove', (e) => {
+        if (!drag) return;
+        const r = main.getBoundingClientRect();
+        let w = Math.max(180, Math.min(520, e.clientX - r.left - 12));
+        sb.style.width = w + 'px'; sb.style.minWidth = w + 'px';
+      });
+      window.addEventListener('mouseup', () => {
+        if (!drag) return;
+        drag = false; rz.classList.remove('drag'); document.body.style.userSelect = '';
+        localStorage.setItem('cc-sb-w', String(parseInt(sb.style.width, 10) || 272));
+        refit();
+      });
+    })();
+
+    // ---- terminal font size (A− / A+), desktop ----
+    (function () {
+      let f = parseInt(localStorage.getItem('cc-fontsize') || '', 10);
+      if (!(f >= 8 && f <= 28)) f = 13;
+      window.__userFont = f;
+      function apply() {
+        window.__userFont = f; localStorage.setItem('cc-fontsize', String(f));
+        try { applyView(); } catch (e) {}
+        setTimeout(() => { try { term.scrollToBottom(); term.refresh(0, term.rows - 1); } catch (e) {} }, 30);
+      }
+      document.getElementById('font-inc').addEventListener('click', () => { f = Math.min(28, f + 1); apply(); });
+      document.getElementById('font-dec').addEventListener('click', () => { f = Math.max(8, f - 1); apply(); });
+      apply(); // apply the saved size on load
+    })();
+    let fitTimer = null;
+    window.addEventListener('resize', () => {
+      cellRatio = null;                        // zoom/resize invalidates the cached cell ratio
+      clearTimeout(fitTimer); fitTimer = setTimeout(applyView, 120);
+    });
+    // Browser zoom shifts devicePixelRatio without always firing a clean resize on
+    // every platform/webview; watch DPR directly and re-align the grid when it moves.
+    // Each matchMedia tracks one dppx value, so re-arm after every change.
+    (function watchZoom() {
+      const mq = window.matchMedia(`(resolution: ${window.devicePixelRatio}dppx)`);
+      mq.addEventListener('change', () => { cellRatio = null; applyView(); watchZoom(); }, { once: true });
+    })();
+    setTimeout(applyView, 80); // once the first render has measurable cell metrics
+
+    connect();
+  </script>
+</body>
+</html>

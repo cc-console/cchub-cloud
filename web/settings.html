@@ -1,0 +1,1022 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>cc-console — Settings</title>
+  <script>
+    /* apply saved theme before paint (shared with the console via localStorage) */
+    (function () { try {
+      var m = localStorage.getItem('cc-theme') || 'system';
+      var light = m === 'light' || (m === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
+      if (light) document.documentElement.classList.add('light');
+    } catch (e) {} })();
+    /* apply saved language before paint (default English) */
+    (function () { try {
+      var l = localStorage.getItem('cc_lang');
+      document.documentElement.dataset.lang = (l === 'zh' ? 'zh' : 'en');
+    } catch (e) { document.documentElement.dataset.lang = 'en'; } })();
+  </script>
+  <style>
+    :root {
+      color-scheme: dark;
+      --bg: #090a0e;
+      --panel: rgba(255,255,255,0.045);
+      --panel-2: rgba(255,255,255,0.075);
+      --panel-solid: #13151c;
+      --border: rgba(255,255,255,0.08);
+      --border-strong: rgba(255,255,255,0.15);
+      --text: #e8eaf1;
+      --text-dim: #9aa1af;
+      --text-faint: #646c79;
+      --accent: #7c8cff;
+      --accent-grad: linear-gradient(135deg, #6d83ff, #b07cff);
+      --radius: 14px;
+      --radius-sm: 9px;
+    }
+    :root.light {
+      color-scheme: light;
+      --bg: #f3f5f9;
+      --panel: rgba(0,0,0,0.04);
+      --panel-2: rgba(0,0,0,0.07);
+      --panel-solid: #ffffff;
+      --border: rgba(0,0,0,0.10);
+      --border-strong: rgba(0,0,0,0.20);
+      --text: #1b2230;
+      --text-dim: #586273;
+      --text-faint: #98a3b3;
+      --accent: #5566ee;
+    }
+    * { box-sizing: border-box; }
+    html, body { height: 100%; margin: 0; max-width: 100%; overflow-x: hidden; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif;
+      font-size: 13px; -webkit-font-smoothing: antialiased;
+      display: flex; flex-direction: column;
+    }
+    body::before {
+      content: ""; position: fixed; inset: 0; z-index: -1; pointer-events: none;
+      background:
+        radial-gradient(1000px 560px at 8% -12%, rgba(109,131,255,0.12), transparent 60%),
+        radial-gradient(880px 540px at 102% -6%, rgba(176,124,255,0.09), transparent 55%);
+    }
+    :root.light body::before { opacity: 0.6; }
+
+    header {
+      flex-shrink: 0; display: flex; align-items: center; gap: 10px;
+      height: 52px; padding: 0 14px; border-bottom: 1px solid var(--border);
+      background: rgba(11,12,17,0.7);
+      backdrop-filter: blur(18px) saturate(1.4); -webkit-backdrop-filter: blur(18px) saturate(1.4);
+    }
+    :root.light header { background: rgba(255,255,255,0.72); }
+    .brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: 13.5px; letter-spacing: -0.01em; }
+    .brand-dot { width: 9px; height: 9px; border-radius: 50%; background: var(--accent-grad); box-shadow: 0 0 14px rgba(124,140,255,0.9); }
+    .header-label { color: var(--text-dim); font-size: 13px; }
+    .grow { flex: 1; }
+    a.back {
+      display: inline-flex; align-items: center; gap: 6px; text-decoration: none; color: var(--text-dim);
+      padding: 7px 13px; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--panel); font-weight: 600; font-size: 12px;
+      transition: background .14s ease, border-color .14s ease, color .14s ease;
+    }
+    a.back:hover { color: var(--text); border-color: var(--border-strong); background: var(--panel-2); }
+
+    /* tabs */
+    .tabs { flex-shrink: 0; display: flex; gap: 6px; padding: 12px 14px 0; }
+    .tab {
+      appearance: none; cursor: pointer; font: inherit; font-weight: 700; font-size: 13px;
+      padding: 9px 18px; border-radius: 999px;
+      border: 1px solid var(--border); background: var(--panel); color: var(--text-dim);
+      transition: background .14s ease, border-color .14s ease, color .14s ease;
+    }
+    .tab:hover { color: var(--text); border-color: var(--border-strong); }
+    .tab.active { color: #fff; border-color: transparent; background: var(--accent-grad); box-shadow: 0 2px 14px rgba(124,140,255,0.4); }
+    /* OS sub-tabs inside the Guide panel */
+    .os-tabs { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .os-tab {
+      appearance: none; cursor: pointer; font: inherit; font-weight: 600; font-size: 12.5px;
+      padding: 6px 14px; border-radius: 8px; border: 1px solid var(--border);
+      background: var(--panel-2); color: var(--text-dim);
+      transition: background .14s ease, border-color .14s ease, color .14s ease;
+    }
+    .os-tab:hover { color: var(--text); border-color: var(--border-strong); }
+    .os-tab.active { color: #fff; border-color: transparent; background: var(--accent-grad); }
+    /* i18n: keep both languages in the DOM, show only the active one via html[data-lang] */
+    .i18n { display: none; }
+    html[data-lang="en"] .lang-en { display: revert; }
+    html[data-lang="zh"] .lang-zh { display: revert; }
+    #lang-btn { cursor: pointer; font: inherit; }
+
+    main { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 12px 14px 16px; }
+    .panel { display: none; flex: 1; min-height: 0; }
+    .panel.active { display: flex; flex-direction: column; }
+
+    /* usage iframe */
+    #usage-frame {
+      flex: 1; width: 100%; min-height: 0; border: 1px solid var(--border);
+      border-radius: var(--radius); background: var(--panel-solid); display: block;
+    }
+
+    /* ---- session manager (History tab) ---- */
+    #panel-history.active { flex-direction: row; gap: 12px; min-height: 0; }
+    .sm-list {
+      display: flex; flex-direction: column; min-height: 0;
+      width: 300px; flex: 0 0 300px;
+      border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-solid);
+    }
+    .sm-list-head { display: flex; align-items: center; gap: 6px; padding: 8px; border-bottom: 1px solid var(--border); }
+    .sm-count { font-size: 11px; font-weight: 700; color: var(--text-dim); background: var(--panel-2);
+      border: 1px solid var(--border); border-radius: 999px; padding: 2px 8px; }
+    .sm-search { flex: 1; min-width: 0; background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+      border-radius: 8px; padding: 6px 9px; font-size: 12px; font-family: inherit; }
+    .sm-search:focus { outline: none; border-color: var(--accent); }
+    .sm-filter { background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+      border-radius: 8px; padding: 5px 6px; font-size: 12px; font-family: inherit; cursor: pointer; }
+    .sm-icon { background: var(--panel-2); border: 1px solid var(--border); color: var(--text-dim); cursor: pointer;
+      border-radius: 8px; width: 28px; height: 28px; font-size: 14px; display: grid; place-items: center; flex-shrink: 0; }
+    .sm-icon:hover { color: var(--text); border-color: var(--border-strong); }
+    .sm-items { flex: 1; min-height: 0; overflow-y: auto; padding: 6px; }
+    .sm-item { padding: 9px 10px; border-radius: 9px; cursor: pointer; border: 1px solid transparent; margin-bottom: 2px; }
+    .sm-item:hover { background: var(--panel-2); }
+    .sm-item.active { background: rgba(124,140,255,0.12); border-color: rgba(124,140,255,0.4); }
+    .sm-item-t { font-size: 12.5px; font-weight: 600; color: var(--text); line-height: 1.35;
+      display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    .sm-item-m { display: flex; align-items: center; gap: 6px; margin-top: 4px; font-size: 11px; color: var(--text-faint); }
+    .sm-item-badge { font-size: 9.5px; font-weight: 700; padding: 1px 5px; border-radius: 4px; text-transform: uppercase; letter-spacing: .03em; }
+
+    .sm-detail { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column;
+      border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel-solid); }
+    .sm-empty { margin: auto; color: var(--text-faint); font-size: 13px; }
+    .sm-dhead { display: flex; align-items: flex-start; gap: 10px; padding: 14px 16px 10px; border-bottom: 1px solid var(--border); }
+    .sm-dtitle { flex: 1; min-width: 0; font-size: 15px; font-weight: 700; color: var(--text); line-height: 1.4; }
+    .sm-dactions { display: flex; gap: 8px; flex-shrink: 0; }
+    .rbtn.danger { background: linear-gradient(180deg,#ff6b6b,#e5484d); color: #fff; border: 0; }
+    .sm-dmeta { padding: 8px 16px 0; font-size: 11.5px; color: var(--text-dim); display: flex; gap: 14px; flex-wrap: wrap; }
+    .sm-cmd { margin: 10px 16px 0; display: flex; align-items: center; gap: 8px; background: var(--panel-2);
+      border: 1px solid var(--border); border-radius: 8px; padding: 7px 10px; }
+    .sm-cmd code { flex: 1; min-width: 0; font-family: ui-monospace, Menlo, monospace; font-size: 11.5px; color: var(--text);
+      white-space: nowrap; overflow-x: auto; }
+    .sm-msgs-head { padding: 12px 16px 6px; font-size: 12px; font-weight: 700; color: var(--text-dim); display: flex; align-items: center; gap: 8px; }
+    .sm-msgs { flex: 1; min-height: 0; overflow-y: auto; padding: 0 16px 16px; display: flex; flex-direction: column; gap: 8px; }
+    .sm-msg { border: 1px solid var(--border); border-radius: 10px; padding: 9px 11px; font-size: 12.5px; }
+    .sm-msg.user { background: rgba(16,185,129,0.06); border-color: rgba(16,185,129,0.25); }
+    .sm-msg.assistant { background: rgba(124,140,255,0.06); border-color: rgba(124,140,255,0.22); }
+    .sm-msg.tool { background: var(--panel-2); }
+    .sm-msg-h { display: flex; align-items: center; justify-content: space-between; margin-bottom: 4px; }
+    .sm-role { font-size: 11px; font-weight: 700; }
+    .sm-role.user { color: #10b981; } .sm-role.assistant { color: var(--accent); } .sm-role.tool { color: #a855f7; }
+    .sm-msg-ts { font-size: 10.5px; color: var(--text-faint); }
+    .sm-msg-c { white-space: pre-wrap; overflow-wrap: anywhere; line-height: 1.5; color: var(--text); }
+    .sm-msg-more { margin-top: 5px; font-size: 11px; color: var(--text-dim); background: none; border: 0; cursor: pointer; padding: 0; }
+    .sm-msg-more:hover { color: var(--text); }
+    /* Back-to-list button: desktop shows list + detail side by side, so it's hidden
+       there; only the mobile master/detail view needs it. */
+    .sm-back { display: none; appearance: none; cursor: pointer; font: inherit;
+      flex-shrink: 0; width: 32px; height: 32px; border-radius: 8px; font-size: 17px;
+      border: 1px solid var(--border); background: var(--panel-2); color: var(--text-dim);
+      align-items: center; justify-content: center; }
+    .sm-back:hover { color: var(--text); border-color: var(--border-strong); }
+
+    @media (max-width: 720px) {
+      /* Mobile master/detail: show the list full-height, and when a session is
+         opened swap to the transcript full-height (with a back button) instead of
+         cramming both into a split that left the transcript unreadably short. */
+      #panel-history.active { flex-direction: column; }
+      .sm-list { width: auto; flex: 1 1 auto; max-height: none; }
+      #panel-history .sm-detail { display: none; }
+      #panel-history.detail-open .sm-list { display: none; }
+      #panel-history.detail-open .sm-detail { display: flex; flex: 1 1 auto; }
+      #panel-history.detail-open .sm-back { display: inline-flex; }
+      /* The full-screen transcript has room for a comfortable reading size — the
+         12.5px split-view default reads small on a phone. */
+      #panel-history.detail-open .sm-msg { font-size: 14.5px; padding: 11px 13px; }
+      #panel-history.detail-open .sm-msg-c { line-height: 1.6; }
+      #panel-history.detail-open .sm-dtitle { font-size: 16px; }
+      #panel-history.detail-open .sm-role { font-size: 12px; }
+    }
+
+    /* prominent red callout (e.g. the macOS unsigned-app step) */
+    .callout-red { border: 1px solid rgba(229,72,77,0.5); background: rgba(229,72,77,0.08);
+      border-left: 3px solid #e5484d; border-radius: 10px; padding: 11px 13px; margin: 8px 0; }
+    .callout-red b { color: #e5484d; }
+    .callout-red pre { margin: 8px 0 0; }
+
+    /* ---- account login/register form ---- */
+    .acc-form { display: flex; flex-direction: column; gap: 8px; max-width: 360px; margin-top: 10px; }
+    .acc-form input { background: var(--panel-2); border: 1px solid var(--border); color: var(--text);
+      border-radius: 9px; padding: 9px 11px; font-size: 13px; font-family: inherit; }
+    .acc-form input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(124,140,255,0.18); }
+    .acc-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+    .acc-msg { font-size: 12px; min-height: 16px; }
+    .acc-msg.err { color: var(--err, #e5484d); }
+    .acc-msg.ok { color: #10b981; }
+    .acc-or { display: flex; align-items: center; gap: 10px; color: var(--text-faint); font-size: 11px; margin: 14px 0 8px; max-width: 360px; }
+    .acc-or::before, .acc-or::after { content: ""; flex: 1; height: 1px; background: var(--border); }
+    .acc-oauth { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    /* about */
+    #panel-about { overflow-y: auto; gap: 12px; }
+    .about-hero {
+      display: flex; align-items: center; gap: 14px;
+      padding: 18px 18px; border: 1px solid var(--border); border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(109,131,255,0.10), rgba(176,124,255,0.05));
+    }
+    .about-logo {
+      width: 48px; height: 48px; border-radius: 14px; flex-shrink: 0;
+      display: inline-flex; align-items: center; justify-content: center; font-size: 24px;
+      background: var(--accent-grad); box-shadow: 0 6px 20px rgba(124,140,255,0.4);
+    }
+    .about-hero { position: relative; }
+    .about-hero h1 { margin: 0 0 4px; font-size: 19px; letter-spacing: -0.01em; }
+    .about-hero .tagline { margin: 0 0 6px; font-size: 12.5px; line-height: 1.45; color: var(--text); font-weight: 600; }
+    .about-hero .ver { color: var(--text-dim); font-size: 11.5px; font-variant-numeric: tabular-nums; }
+    .about-hero .ver .pill {
+      display: inline-block; margin-left: 7px; padding: 1px 8px; border-radius: 999px; font-weight: 700;
+      font-size: 10px; letter-spacing: 0.04em; color: #fff; background: var(--accent-grad); vertical-align: 1px;
+    }
+    /* hero lead-in (value proposition) */
+    .about-lead {
+      border: 1px solid var(--border); border-radius: var(--radius);
+      background: linear-gradient(135deg, rgba(109,131,255,0.08), rgba(176,124,255,0.04));
+      padding: 16px 18px; line-height: 1.6; font-size: 13.5px; color: var(--text);
+    }
+    .about-lead strong { color: var(--accent); font-weight: 700; }
+    /* benefit-framed feature rows */
+    .feature { display: flex; gap: 12px; padding: 11px 0; border-bottom: 1px solid var(--border); }
+    .feature:first-of-type { padding-top: 2px; }
+    .feature:last-child { border-bottom: 0; padding-bottom: 2px; }
+    .feature .fi {
+      flex-shrink: 0; width: 30px; height: 30px; border-radius: 9px; font-size: 15px;
+      display: inline-flex; align-items: center; justify-content: center;
+      background: var(--panel-2); border: 1px solid var(--border);
+    }
+    .feature .ft { font-weight: 700; font-size: 13px; margin-bottom: 2px; }
+    .feature .fd { color: var(--text-dim); font-size: 12px; line-height: 1.5; }
+    .about-foot { text-align: center; color: var(--text-faint); font-size: 11px; padding: 6px 0 2px; line-height: 1.5; }
+    .about-card {
+      border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel);
+      padding: 15px 16px;
+    }
+    .about-card h2 { margin: 0 0 8px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--text-dim); font-weight: 700; }
+    .about-card p { margin: 0 0 8px; line-height: 1.55; color: var(--text); }
+    .about-card p:last-child { margin-bottom: 0; }
+    .kv { display: flex; gap: 10px; padding: 6px 0; border-bottom: 1px solid var(--border); font-size: 12.5px; }
+    .kv:last-child { border-bottom: 0; }
+    .kv .k { color: var(--text-dim); min-width: 92px; flex-shrink: 0; }
+    .kv .v { color: var(--text); font-family: ui-monospace, Menlo, monospace; word-break: break-all; }
+    .chips { display: flex; flex-wrap: wrap; gap: 6px; }
+    .chip { font-size: 11px; font-weight: 600; padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border); background: var(--panel-2); color: var(--text-dim); }
+    .rbtn { border: 0; border-radius: 9px; padding: 8px 14px; font-weight: 700; font-size: 12.5px; cursor: pointer; color: #fff; background: var(--accent-grad); box-shadow: 0 4px 14px rgba(124,140,255,0.35); }
+    .rbtn:hover { filter: brightness(1.08); }
+    .rbtn:disabled { opacity: 0.6; cursor: default; }
+    .rbtn.ghost { background: var(--panel-2); color: var(--text-dim); border: 1px solid var(--border); box-shadow: none; }
+    .rbtn.ghost:hover { color: var(--text); border-color: var(--border-strong); }
+    .rstate { font-size: 12px; color: var(--text-dim); }
+    .note { border-radius: 9px; padding: 10px 12px; font-size: 12.5px; line-height: 1.55; color: var(--text); background: var(--panel-2); border: 1px solid var(--border); }
+    .note-warn { border-color: rgba(255,180,80,0.42); background: rgba(255,170,60,0.09); }
+    .about-card .steps { margin: 6px 0 8px; padding-left: 18px; line-height: 1.7; font-size: 13px; }
+    .about-card .steps li { margin-bottom: 8px; }
+    .about-card code { font-family: ui-monospace, Menlo, monospace; font-size: 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 5px; padding: 1px 5px; }
+    .about-card pre { margin: 6px 0 0; padding: 10px 12px; background: var(--panel-2); border: 1px solid var(--border); border-radius: 8px; font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 1.5; color: var(--text); overflow-x: auto; }
+    .about-card .steps.disc { list-style: disc; }
+    .about-card .steps.tight { margin: 6px 0 2px; }
+    .steps-h { margin: 14px 0 2px; font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-dim); }
+    .steps-foot { color: var(--text-dim); font-size: 12px; line-height: 1.6; margin: 12px 0 0; }
+    .about-card .note + .note { margin-top: 8px; }
+    .about-card .note { margin-top: 12px; }
+    a.lnk { color: var(--accent); text-decoration: none; }
+    a.lnk:hover { text-decoration: underline; }
+
+    /* ---- Alerts (sound) tab ---- */
+    .sound-list { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+    .sound-item { display: flex; align-items: center; gap: 12px; padding: 11px 13px; cursor: pointer;
+      border: 1px solid var(--border); border-radius: 11px; background: var(--panel-2);
+      transition: border-color .12s, background .12s, box-shadow .12s; }
+    .sound-item:hover { border-color: var(--border-strong); }
+    .sound-item.sel { border-color: transparent; background: var(--accent-grad);
+      box-shadow: 0 3px 16px rgba(124,140,255,0.35); }
+    .sound-radio { width: 16px; height: 16px; flex: 0 0 auto; border-radius: 50%;
+      border: 2px solid var(--text-dim); position: relative; transition: border-color .12s; }
+    .sound-item.sel .sound-radio { border-color: #fff; }
+    .sound-item.sel .sound-radio::after { content: ""; position: absolute; inset: 3px;
+      border-radius: 50%; background: #fff; }
+    .sound-name { flex: 1; font-size: 13.5px; font-weight: 600; color: var(--text); }
+    .sound-item.sel .sound-name { color: #fff; }
+    .sound-play { flex: 0 0 auto; width: 30px; height: 30px; border-radius: 8px; cursor: pointer;
+      border: 1px solid var(--border); background: var(--panel-solid); color: var(--text-dim);
+      font-size: 12px; line-height: 1; display: grid; place-items: center; transition: color .12s, border-color .12s; }
+    .sound-play:hover { color: var(--text); border-color: var(--border-strong); }
+    .sound-item.sel .sound-play { color: #fff; border-color: rgba(255,255,255,0.55); background: rgba(255,255,255,0.12); }
+    .vol-row { display: flex; align-items: center; gap: 14px; margin-top: 12px; }
+    .vol-row input[type=range] { flex: 1; accent-color: var(--accent); height: 4px; cursor: pointer; }
+    .vol-val { font-size: 12.5px; font-variant-numeric: tabular-nums; color: var(--text-dim);
+      min-width: 42px; text-align: right; }
+
+    @media (max-width: 640px) {
+      header { height: 46px; padding: 0 10px; }
+      .header-label { display: none; }
+      main { padding: 10px 10px 14px; }
+      /* Wrap the tab row so all tabs stay fully visible (they used to overflow and
+         clip Guide/About once a 6th tab was added). Slightly smaller so more fit
+         per row. */
+      .tabs { padding: 10px 10px 0; flex-wrap: wrap; gap: 6px; }
+      .tab { padding: 7px 13px; font-size: 12px; flex: 0 0 auto; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <span class="brand"><span class="brand-dot"></span>cc-console</span>
+    <span class="header-label">· <span class="i18n lang-zh">设置</span><span class="i18n lang-en">Settings</span></span>
+    <span class="grow"></span>
+    <button class="back" id="lang-btn" title="中文 / English">中文</button>
+    <a class="back" href="/">← <span class="i18n lang-zh">控制台</span><span class="i18n lang-en">Console</span></a>
+  </header>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="account"><span class="i18n lang-zh">账号</span><span class="i18n lang-en">Account</span></button>
+    <button class="tab" data-tab="usage"><span class="i18n lang-zh">Token 用量</span><span class="i18n lang-en">Usage</span></button>
+    <button class="tab" data-tab="history"><span class="i18n lang-zh">历史对话</span><span class="i18n lang-en">History</span></button>
+    <button class="tab" data-tab="sound"><span class="i18n lang-zh">提醒声音</span><span class="i18n lang-en">Alerts</span></button>
+    <button class="tab" data-tab="guide"><span class="i18n lang-zh">使用说明</span><span class="i18n lang-en">Guide</span></button>
+    <button class="tab" data-tab="about"><span class="i18n lang-zh">关于</span><span class="i18n lang-en">About</span></button>
+  </div>
+
+  <main>
+    <section id="panel-usage" class="panel">
+      <iframe id="usage-frame" title="Token usage"></iframe>
+    </section>
+
+    <section id="panel-history" class="panel">
+      <div class="sm-list">
+        <div class="sm-list-head">
+          <span class="sm-count" id="sm-count">0</span>
+          <input id="sm-search" class="sm-search" autocomplete="off" spellcheck="false"
+                 data-ph-zh="搜索标题 / 内容" data-ph-en="Search title / content">
+          <select id="sm-filter" class="sm-filter">
+            <option value="">All</option>
+            <option value="claude">Claude</option>
+            <option value="codex">Codex</option>
+            <option value="gemini">Gemini</option>
+          </select>
+          <button id="sm-refresh" class="sm-icon" title="Refresh">⟳</button>
+        </div>
+        <div id="sm-items" class="sm-items"></div>
+      </div>
+      <div class="sm-detail">
+        <div class="sm-empty" id="sm-detail-empty"><span class="i18n lang-zh">选择左侧会话查看完整对话</span><span class="i18n lang-en">Pick a session to view the full conversation</span></div>
+        <div id="sm-detail-body" style="display:none;flex-direction:column;min-height:0;height:100%">
+          <div class="sm-dhead">
+            <button id="sm-back" class="sm-back" title="Back" aria-label="Back to list">←</button>
+            <div class="sm-dtitle" id="sm-dtitle"></div>
+            <div class="sm-dactions">
+              <button id="sm-resume" class="rbtn">▷ <span class="i18n lang-zh">恢复会话</span><span class="i18n lang-en">Resume</span></button>
+              <button id="sm-delete" class="rbtn danger">🗑 <span class="i18n lang-zh">删除</span><span class="i18n lang-en">Delete</span></button>
+            </div>
+          </div>
+          <div class="sm-dmeta" id="sm-dmeta"></div>
+          <div class="sm-cmd"><code id="sm-cmd-text"></code><button id="sm-cmd-copy" class="sm-icon" title="Copy">⧉</button></div>
+          <div class="sm-msgs-head"><span class="i18n lang-zh">对话记录</span><span class="i18n lang-en">Transcript</span> <span class="sm-count" id="sm-msgcount">0</span></div>
+          <div class="sm-msgs" id="sm-msgs"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-account" class="panel active" style="overflow-y:auto;gap:12px;">
+      <div class="about-card">
+        <h2><span class="i18n lang-zh">账号</span><span class="i18n lang-en">Account</span></h2>
+        <p><span class="i18n lang-zh">登录只为启用稳定、安全的私有隧道(<code>你的名字.cchub.cloud</code>)。你的对话与代码始终留在本机,账号不保存任何会话内容。</span><span class="i18n lang-en">Sign in only to enable a stable, secure private tunnel (<code>your-name.cchub.cloud</code>). Your conversations and code never leave this machine — the account stores none of your session content.</span></p>
+
+        <!-- signed-out: in-app email/password form -->
+        <div id="acc-signedout">
+          <div class="acc-form">
+            <input id="acc-email" type="email" autocomplete="username" autocapitalize="off" spellcheck="false"
+                   data-ph-zh="邮箱" data-ph-en="Email">
+            <input id="acc-pw" type="password" autocomplete="current-password"
+                   data-ph-zh="密码(至少 8 位)" data-ph-en="Password (8+ chars)">
+            <div class="acc-actions">
+              <button id="acc-login" class="rbtn"><span class="i18n lang-zh">登录</span><span class="i18n lang-en">Sign in</span></button>
+              <button id="acc-register" class="rbtn ghost"><span class="i18n lang-zh">注册</span><span class="i18n lang-en">Sign up</span></button>
+            </div>
+            <div id="acc-msg" class="acc-msg"></div>
+          </div>
+          <div class="acc-or"><span class="i18n lang-zh">或</span><span class="i18n lang-en">or</span></div>
+          <div class="acc-oauth">
+            <button id="acc-github" class="rbtn ghost">GitHub ↗</button>
+            <button id="acc-google" class="rbtn ghost">Google ↗</button>
+          </div>
+          <p class="note" style="margin-top:10px"><span class="i18n lang-zh">GitHub / Google 在浏览器登录;登录后回到「远程」页点一键连接即可。</span><span class="i18n lang-en">GitHub / Google sign-in opens your browser; afterwards use one-click connect on the Remote page.</span></p>
+        </div>
+
+        <!-- email-verification pending (must verify before remote works) -->
+        <div id="acc-pending" style="display:none">
+          <div class="callout-red">
+            <span class="i18n lang-zh"><b>请先验证邮箱</b> —— 验证邮件已发送至 <b id="acc-pending-email"></b>。请点击邮件里的链接完成验证;<b>只有验证后才能登录并使用远程连接</b>。</span>
+            <span class="i18n lang-en"><b>Verify your email first</b> — a verification link was sent to <b id="acc-pending-email-en"></b>. Click it to finish; <b>remote access is only available after verification</b>.</span>
+          </div>
+          <div class="acc-actions" style="margin-top:10px">
+            <button id="acc-verified" class="rbtn"><span class="i18n lang-zh">我已验证,刷新</span><span class="i18n lang-en">I've verified — refresh</span></button>
+            <button id="acc-resend" class="rbtn ghost"><span class="i18n lang-zh">重发验证邮件</span><span class="i18n lang-en">Resend email</span></button>
+            <button id="acc-cancel" class="rbtn ghost"><span class="i18n lang-zh">退出</span><span class="i18n lang-en">Sign out</span></button>
+          </div>
+          <div id="acc-pmsg" class="acc-msg"></div>
+        </div>
+
+        <!-- signed-in -->
+        <div id="acc-signedin" style="display:none">
+          <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px">
+            <span class="i18n lang-zh">已登录</span><span class="i18n lang-en">Signed in as</span>
+            <b id="acc-who" style="color:var(--text)"></b>
+            <span id="acc-plan" class="chip"></span>
+            <span id="acc-verify" class="chip" style="display:none"></span>
+          </div>
+          <div class="acc-actions" style="margin-top:10px">
+            <button id="acc-logout" class="rbtn ghost"><span class="i18n lang-zh">退出登录</span><span class="i18n lang-en">Sign out</span></button>
+            <button id="acc-subscribe" class="rbtn ghost"><span class="i18n lang-zh">订阅</span><span class="i18n lang-en">Subscribe</span> ↗</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="about-card">
+        <h2><span class="i18n lang-zh">远程访问</span><span class="i18n lang-en">Remote access</span></h2>
+        <p><span class="i18n lang-zh">一键连接,获得稳定地址,手机 / 平板随时接管会话。</span><span class="i18n lang-en">One click → a stable address; take over a session from your phone or tablet.</span></p>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+          <a id="btn-remote-page" class="rbtn" href="/remote.html"><span class="i18n lang-zh">打开远程页</span><span class="i18n lang-en">Open Remote</span></a>
+          <span id="acc-remote-state" class="rstate"></span>
+        </div>
+      </div>
+
+    </section>
+
+    <section id="panel-sound" class="panel" style="overflow-y:auto;gap:12px;">
+      <div class="about-card">
+        <h2>🔔 <span class="i18n lang-zh">提醒声音</span><span class="i18n lang-en">Alert sound</span></h2>
+        <p><span class="i18n lang-zh">当后台会话停下来等你确认（Yes/No）时会播放提示音。选一个你喜欢的，点 ▶ 试听 —— 选择会立即保存。</span><span class="i18n lang-en">When a background session stops and waits for your Yes/No, it plays an alert. Pick the one you like — tap ▶ to preview. Your choice saves instantly.</span></p>
+        <div id="sound-list" class="sound-list"></div>
+      </div>
+      <div class="about-card">
+        <h2>🔊 <span class="i18n lang-zh">音量</span><span class="i18n lang-en">Volume</span></h2>
+        <p><span class="i18n lang-zh">调节提示音的大小，拖动后会按新音量试听一次。</span><span class="i18n lang-en">Adjust how loud the alert is — releasing the slider previews it at the new level.</span></p>
+        <div class="vol-row">
+          <input id="vol-range" type="range" min="0" max="100" step="1" value="80" aria-label="Volume">
+          <span id="vol-val" class="vol-val">80%</span>
+          <button id="vol-test" class="rbtn ghost">▶ <span class="i18n lang-zh">试听</span><span class="i18n lang-en">Test</span></button>
+        </div>
+      </div>
+    </section>
+
+    <section id="panel-guide" class="panel" style="overflow-y:auto;gap:12px;">
+      <div class="about-card">
+        <h2><span class="i18n lang-zh">使用说明</span><span class="i18n lang-en">Guide</span></h2>
+        <p><span class="i18n lang-zh">按你的系统选一条流程,一步步照做即可。装好后,远程连接、手机接管的步骤三个平台都一样。</span><span class="i18n lang-en">Pick your OS and follow the steps. Once installed, remote linking and taking over from your phone work the same on every platform.</span></p>
+        <div class="os-tabs">
+          <button class="os-tab active" data-os="mac">macOS</button>
+          <button class="os-tab" data-os="win">Windows</button>
+          <button class="os-tab" data-os="ubuntu">Ubuntu / Linux</button>
+        </div>
+      </div>
+
+      <div class="about-card os-panel" data-os="mac">
+        <h2><span class="i18n lang-zh">macOS · 安装与运行</span><span class="i18n lang-en">macOS · Install &amp; run</span></h2>
+        <p class="steps-h"><span class="i18n lang-zh">桌面 App(推荐)</span><span class="i18n lang-en">Desktop app (recommended)</span></p>
+        <ol class="steps">
+          <li><span class="i18n lang-zh">从 <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a> 下载 DMG(Apple Silicon)。打开 DMG,把 <code>cc-console</code> 拖进「应用程序」。</span><span class="i18n lang-en">Download the DMG (Apple Silicon) from <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a>. Open it and drag <code>cc-console</code> into Applications.</span></li>
+          <li>
+            <div class="callout-red">
+              <span class="i18n lang-zh"><b>⚠ 首次打开必看:</b> 为控制开发成本,App 暂未购买 Apple 签名,macOS 会拦下并提示「已损坏」。<b>请在「终端」里运行下面这行命令一次</b>,之后正常双击打开即可:</span>
+              <span class="i18n lang-en"><b>⚠ First launch — important:</b> to keep development costs down we haven't bought Apple code-signing yet, so macOS blocks the app as “damaged”. <b>Run this once in Terminal</b>, then open it normally by double-clicking:</span>
+              <pre>xattr -dr com.apple.quarantine /Applications/cc-console.app</pre>
+            </div>
+          </li>
+          <li><span class="i18n lang-zh"><strong>装运行依赖。</strong> 需要 <code>tmux</code> 和你要用的 CLI 在 PATH 里:</span><span class="i18n lang-en"><strong>Install the runtime deps.</strong> You need <code>tmux</code> and at least one CLI on your PATH:</span>
+            <pre>brew install tmux
+# claude / codex / gemini — at least one, runnable from your terminal</pre></li>
+          <li><span class="i18n lang-zh">打开 cc-console。它会自动启动本地引擎并进入控制台 —— 点右上角 <strong>🌐 远程 Remote → 连接</strong>,浏览器里批准即可拿到稳定地址。</span><span class="i18n lang-en">Open cc-console. It starts the local engine and drops you into the console — click <strong>🌐 Remote → Connect</strong>, approve in the browser, and you get a stable address.</span></li>
+        </ol>
+        <p class="steps-h"><span class="i18n lang-zh">命令行 / 服务器</span><span class="i18n lang-en">Command line / server</span></p>
+        <pre>curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh
+cc-console        # the startup log prints your URL + token</pre>
+        <div class="note"><span class="i18n lang-zh">走代理上网?启动时会自动探测本机代理(Clash / v2rayN / Surge…)并注入,通常无需配置。要指定端口或关闭探测,在 <code>~/.claude/cc-console/config.toml</code> 配 <code>[session.env]</code> / <code>[session] auto_proxy = false</code>。</span><span class="i18n lang-en">Behind a proxy? cc-console auto-detects a local proxy (Clash / v2rayN / Surge…) at startup and injects it — usually nothing to configure. To pin a port or turn detection off, set <code>[session.env]</code> / <code>[session] auto_proxy = false</code> in <code>~/.claude/cc-console/config.toml</code>.</span></div>
+      </div>
+
+      <div class="about-card os-panel" data-os="win" style="display:none">
+        <h2><span class="i18n lang-zh">Windows · 安装与运行</span><span class="i18n lang-en">Windows · Install &amp; run</span></h2>
+        <ol class="steps">
+          <li><span class="i18n lang-zh">从 <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a> 下载 <code>cc-console-windows-setup.exe</code>(或 <code>.msi</code>),运行安装。</span><span class="i18n lang-en">Download <code>cc-console-windows-setup.exe</code> (or the <code>.msi</code>) from <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a> and run the installer.</span></li>
+          <li><span class="i18n lang-zh"><strong>无需 tmux。</strong> Windows 用内置会话引擎(pty),开箱即用。</span><span class="i18n lang-en"><strong>No tmux needed.</strong> Windows uses the built-in session engine (pty) — works out of the box.</span></li>
+          <li><span class="i18n lang-zh"><strong>确保 CLI 在 PATH。</strong> 在 PowerShell 里能直接运行 <code>claude</code> / <code>codex</code> / <code>gemini</code> 至少一个(用各自官方安装方式装好)。</span><span class="i18n lang-en"><strong>Put a CLI on your PATH.</strong> Make sure at least one of <code>claude</code> / <code>codex</code> / <code>gemini</code> runs from PowerShell (install via each tool's official method).</span></li>
+          <li><span class="i18n lang-zh">打开 cc-console,控制台自动就绪。点 <strong>🌐 远程 Remote → 连接</strong>,浏览器批准 → 稳定地址到手。</span><span class="i18n lang-en">Open cc-console; the console is ready automatically. Click <strong>🌐 Remote → Connect</strong>, approve in the browser, and your stable address is live.</span></li>
+        </ol>
+        <div class="note"><span class="i18n lang-zh">走代理上网?启动时会自动探测本机代理(Clash / v2rayN / Surge…)并注入,通常无需配置。要指定端口或关闭探测,在 <code>%USERPROFILE%\.claude\cc-console\config.toml</code> 配 <code>[session.env]</code> / <code>[session] auto_proxy = false</code>。</span><span class="i18n lang-en">Behind a proxy? cc-console auto-detects a local proxy (Clash / v2rayN / Surge…) at startup and injects it — usually nothing to configure. To pin a port or turn detection off, set <code>[session.env]</code> / <code>[session] auto_proxy = false</code> in <code>%USERPROFILE%\.claude\cc-console\config.toml</code>.</span></div>
+      </div>
+
+      <div class="about-card os-panel" data-os="ubuntu" style="display:none">
+        <h2><span class="i18n lang-zh">Ubuntu / Linux · 安装与运行</span><span class="i18n lang-en">Ubuntu / Linux · Install &amp; run</span></h2>
+        <p class="steps-h"><span class="i18n lang-zh">一行命令(桌面或服务器均可)</span><span class="i18n lang-en">One-liner (desktop or server)</span></p>
+        <pre>curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh</pre>
+        <p class="steps-h"><span class="i18n lang-zh">或下载安装包</span><span class="i18n lang-en">Or grab a package</span></p>
+        <pre>sudo apt install ./cc-console-linux-x64.deb     # Debian/Ubuntu
+# or: chmod +x cc-console-linux-x64.AppImage &amp;&amp; ./cc-console-linux-x64.AppImage</pre>
+        <ol class="steps">
+          <li><span class="i18n lang-zh"><strong>装依赖。</strong></span><span class="i18n lang-en"><strong>Install deps.</strong></span> <pre>sudo apt install tmux</pre> <span class="i18n lang-zh">并确保 <code>claude</code> / <code>codex</code> / <code>gemini</code> 在 PATH。</span><span class="i18n lang-en">and make sure <code>claude</code> / <code>codex</code> / <code>gemini</code> is on your PATH.</span></li>
+          <li><span class="i18n lang-zh"><strong>有桌面环境</strong>:直接打开 cc-console App,同 macOS。</span><span class="i18n lang-en"><strong>With a desktop:</strong> just open the cc-console app, same as macOS.</span></li>
+          <li><span class="i18n lang-zh"><strong>无头服务器</strong>:直接运行 <code>cc-console</code>,从启动日志里拿到 <code>open: https://…?token=…</code>,在浏览器打开即可;远程连接走 <strong>🌐 远程页</strong>。</span><span class="i18n lang-en"><strong>Headless server:</strong> run <code>cc-console</code>, grab <code>open: https://…?token=…</code> from the startup log and open it in a browser; link remotely from the <strong>🌐 Remote</strong> page.</span></li>
+        </ol>
+        <div class="note"><span class="i18n lang-zh">走代理上网?启动时自动探测本机代理并注入;从终端启动则继承 shell 的代理变量。要指定端口或关闭探测,在 <code>~/.claude/cc-console/config.toml</code> 配 <code>[session.env]</code> / <code>[session] auto_proxy = false</code>。</span><span class="i18n lang-en">Behind a proxy? cc-console auto-detects a local proxy at startup and injects it; launched from a terminal it inherits your shell's proxy vars. To pin a port or turn detection off, set <code>[session.env]</code> / <code>[session] auto_proxy = false</code> in <code>~/.claude/cc-console/config.toml</code>.</span></div>
+      </div>
+    </section>
+
+    <section id="panel-about" class="panel">
+      <div class="about-hero">
+        <span class="about-logo" aria-label="cc-console logo">
+          <svg width="27" height="27" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <path d="M6.5 7.5l4.5 4.5-4.5 4.5" stroke="#fff" stroke-width="2.3" stroke-linecap="round" stroke-linejoin="round"/>
+            <line x1="12.5" y1="16.6" x2="18" y2="16.6" stroke="#fff" stroke-width="2.3" stroke-linecap="round"/>
+          </svg>
+        </span>
+        <div>
+          <h1>cc-console</h1>
+          <p class="tagline">Your AI coding sessions, in your pocket.</p>
+          <div class="ver"><span id="about-ver">v0.2.15</span><span class="pill">BETA</span></div>
+        </div>
+      </div>
+
+      <div class="about-card" style="border-left:3px solid var(--accent)">
+        <h2>🔒 <span class="i18n lang-zh">你的数据,始终在你自己电脑上</span><span class="i18n lang-en">Your data stays on your own machine</span></h2>
+        <p><span class="i18n lang-zh">你和 AI 的对话、代码、文件,全部在你<strong>本机</strong>完成和保存。cc-console <strong>本身只是一个传输工具</strong> —— 把你本地终端的画面安全地转发到你的手机/浏览器,<strong>不存储、不分析你的任何会话内容</strong>。</span><span class="i18n lang-en">Your conversations with the AI, your code, your files — all happen and stay on <strong>your machine</strong>. cc-console is <strong>just a transport</strong>: it securely relays your local terminal to your phone/browser, and <strong>never stores or inspects any of your session content</strong>.</span></p>
+        <p style="margin-top:8px"><span class="i18n lang-zh">把本机端口直接免费映射到公网(如临时隧道)既不稳定也<strong>不安全</strong>。所以我们提供<strong>私有、稳定、加密</strong>的专属隧道,绑定到你自己的 <code>你的名字.cchub.cloud</code> 地址,带 token 鉴权 —— <strong>公测期间免费</strong>。</span><span class="i18n lang-en">Exposing a local port to the public internet for free (e.g. throwaway tunnels) is neither stable nor <strong>secure</strong>. So we run a <strong>private, stable, encrypted</strong> tunnel bound to your own <code>your-name.cchub.cloud</code> address with token auth — <strong>free during the public beta</strong>.</span></p>
+      </div>
+
+      <div class="about-lead">
+        <span class="i18n lang-zh"><strong>cc-console</strong> 把你桌面上的 AI 编程会话(Claude Code / Codex / Gemini)实时搬到手机、平板和任意浏览器:远程实时观看、随手接管、断线自动重连。不仅是「远程托管」—— 它还会在 agent 需要你拍板 Yes/No 时主动「滴滴」叫你,或交给 Autopilot 自动确认。一次部署,随处掌控。</span><span class="i18n lang-en">Your AI coding agents run on your desktop, but you can't sit there all day. <strong>cc-console</strong> brings their live sessions (Claude Code / Codex / Gemini) to your phone, tablet, or any browser: watch in real time, take over with a tap, and never drop the connection. It's more than remote hosting — it chirps for you the moment an agent needs a Yes/No, or hands that off to Autopilot. Deploy once, control from anywhere.</span>
+      </div>
+
+      <div class="about-card">
+        <h2><span class="i18n lang-zh">你能得到什么</span><span class="i18n lang-en">What you get</span></h2>
+        <div class="feature">
+          <span class="fi">📱</span>
+          <div><div class="ft"><span class="i18n lang-zh">实时跨设备同步</span><span class="i18n lang-en">Real-time cross-device sync</span></div><div class="fd"><span class="i18n lang-zh">桌面起一个会话,几秒后在手机上接着用。输入和画面在同一个终端里完全同步 —— 换设备零中断。</span><span class="i18n lang-en">Start a session at your desk, pick it up on your phone in seconds. Input and screen stay in lockstep on the very same terminal — switch devices with zero interruption.</span></div></div>
+        </div>
+        <div class="feature">
+          <span class="fi">🗂️</span>
+          <div><div class="ft"><span class="i18n lang-zh">多会话指挥中心</span><span class="i18n lang-en">Multi-session command center</span></div><div class="fd"><span class="i18n lang-zh">Claude、Codex、Gemini 多个窗口并排跑。每个会话状态一目了然,按 agent 颜色区分。</span><span class="i18n lang-en">Run Claude, Codex, and Gemini windows side by side. See every session's status at a glance, colour-coded by agent.</span></div></div>
+        </div>
+        <div class="feature">
+          <span class="fi">🔔</span>
+          <div><div class="ft"><span class="i18n lang-zh">Yes/No 提示音提醒</span><span class="i18n lang-en">Audible Yes/No alerts</span></div><div class="fd"><span class="i18n lang-zh">后台会话跑到需要你确认 Yes/No 的地方就停下,并发出一段「滴滴」提示音(880→1175Hz 双声上扬),配合浏览器通知和标签角标 —— 你在忙别的也不会错过决策点,不必一直盯着屏幕。</span><span class="i18n lang-en">When a background session stops to ask Yes/No, it plays a distinctive two-tone chirp (880→1175Hz), plus a browser notification and a flashing tab badge — so you never miss a decision point without staring at the screen.</span></div></div>
+        </div>
+        <div class="feature">
+          <span class="fi">🤖</span>
+          <div><div class="ft"><span class="i18n lang-zh">一键托管 Autopilot</span><span class="i18n lang-en">One-tap Autopilot</span></div><div class="fd"><span class="i18n lang-zh">开启「托管」后,Yes/No 提示自动确认,agent 连续跑长任务,你只看结果。提示音用来「找你」,托管用来「替你点」—— 两种节奏随时切换。</span><span class="i18n lang-en">Flip it on and Yes/No prompts confirm automatically — your agent powers through long tasks while you just review results. The chirp fetches you; Autopilot clicks for you — switch between them anytime.</span></div></div>
+        </div>
+        <div class="feature">
+          <span class="fi">📊</span>
+          <div><div class="ft"><span class="i18n lang-zh">用量与花费洞察</span><span class="i18n lang-en">Usage &amp; cost insights</span></div><div class="fd"><span class="i18n lang-zh">实时 token 计量与花费明细 —— 按模型、会话、时间段,看清每一分钱花在哪。</span><span class="i18n lang-en">Live token accounting and cost breakdowns — see exactly where every dollar goes, by model, session, and time range.</span></div></div>
+        </div>
+        <div class="feature">
+          <span class="fi">🔒</span>
+          <div><div class="ft"><span class="i18n lang-zh">私密、安全的访问</span><span class="i18n lang-en">Private, secure access</span></div><div class="fd"><span class="i18n lang-zh">端到端命名隧道 + token 鉴权。只有你能连到自己的机器 —— 无需开放端口,无需公网 IP。</span><span class="i18n lang-en">An end-to-end named tunnel with token auth. Only you reach your own machine — no open ports, no public IP required.</span></div></div>
+        </div>
+      </div>
+
+      <div class="about-card">
+        <h2><span class="i18n lang-zh">实例信息</span><span class="i18n lang-en">Instance</span></h2>
+        <div class="kv"><span class="k"><span class="i18n lang-zh">版本</span><span class="i18n lang-en">Version</span></span><span class="v" id="kv-ver">0.2.15</span></div>
+        <div class="kv"><span class="k"><span class="i18n lang-zh">会话</span><span class="i18n lang-en">Session</span></span><span class="v" id="kv-session">—</span></div>
+        <div class="kv"><span class="k"><span class="i18n lang-zh">远程</span><span class="i18n lang-en">Remote</span></span><span class="v" id="kv-remote">Local only</span></div>
+        <div class="kv"><span class="k"><span class="i18n lang-zh">本地</span><span class="i18n lang-en">Local</span></span><span class="v" id="kv-host">—</span></div>
+      </div>
+
+      <div class="about-card">
+        <h2><span class="i18n lang-zh">为可靠而生</span><span class="i18n lang-en">Built to be reliable</span></h2>
+        <p><span class="i18n lang-zh">Rust 内核 + 持久化 tmux 会话,断线重连也不丢上下文。Cloudflare 命名隧道把你的机器安全地接入网络 —— 无需公网 IP,无需端口转发。</span><span class="i18n lang-en">A Rust core over persistent tmux sessions keeps your context intact through dropped connections and reconnects. A Cloudflare named tunnel puts your machine online securely — no public IP, no port forwarding.</span></p>
+        <div class="chips">
+          <span class="chip">Rust core</span>
+          <span class="chip">Persistent tmux</span>
+          <span class="chip">Real-time WebSocket</span>
+          <span class="chip">Cloudflare Tunnel</span>
+          <span class="chip">Token auth</span>
+        </div>
+      </div>
+
+      <div class="about-card">
+        <h2><span class="i18n lang-zh">项目合作</span><span class="i18n lang-en">Get in touch</span></h2>
+        <p><span class="i18n lang-zh">对 cc-console 有想法、想合作或反馈问题?欢迎联系作者。</span><span class="i18n lang-en">Ideas, partnerships, or feedback on cc-console — reach out anytime.</span></p>
+        <a class="lnk" href="mailto:zhifengwang686@gmail.com" style="display:inline-block;margin-top:6px;font-family:ui-monospace,Menlo,monospace;">zhifengwang686@gmail.com</a>
+      </div>
+
+      <div class="about-foot">
+        © 2026 cc-console · Your AI coding sessions, in your pocket.
+      </div>
+    </section>
+  </main>
+
+  <script src="/sounds.js"></script>
+  <script>
+    // tabs
+    const tabs = document.querySelectorAll('.tab');
+    const frame = document.getElementById('usage-frame');
+    let usageLoaded = false, historyLoaded = false;
+    function show(name) {
+      tabs.forEach(t => t.classList.toggle('active', t.dataset.tab === name));
+      ['account', 'usage', 'history', 'sound', 'guide', 'about'].forEach(p =>
+        document.getElementById('panel-' + p).classList.toggle('active', name === p));
+      if (name === 'usage' && !usageLoaded) { frame.src = '/stats.html?embed=1'; usageLoaded = true; }
+      if (name === 'history' && !historyLoaded) { historyLoaded = true; loadHistory(); }
+    }
+    tabs.forEach(t => t.addEventListener('click', () => show(t.dataset.tab)));
+    show('account'); // default tab
+
+    // ---- language toggle (zh / en, default en) — flips html[data-lang]; CSS shows one ----
+    (function () {
+      const btn = document.getElementById('lang-btn');
+      function setLang(l) {
+        l = (l === 'zh') ? 'zh' : 'en';
+        document.documentElement.dataset.lang = l;
+        try { localStorage.setItem('cc_lang', l); } catch (e) {}
+        if (btn) btn.textContent = (l === 'en') ? '中文' : 'EN';
+      }
+      setLang(document.documentElement.dataset.lang || 'en');
+      if (btn) btn.addEventListener('click', () =>
+        setLang(document.documentElement.dataset.lang === 'en' ? 'zh' : 'en'));
+    })();
+
+    // ---- Alerts: sound picker + volume (shared engine in sounds.js) ----
+    (function () {
+      if (!window.CCSound) return;
+      const listEl = document.getElementById('sound-list');
+      const range  = document.getElementById('vol-range');
+      const volVal = document.getElementById('vol-val');
+      const testBtn = document.getElementById('vol-test');
+      const cur = CCSound.fromStorage();   // { id, vol }
+
+      function saveVol(pct) {
+        pct = Math.max(0, Math.min(100, Math.round(pct)));
+        range.value = pct; volVal.textContent = pct + '%';
+        cur.vol = pct / 100;
+        try { localStorage.setItem('cc-volume', String(cur.vol)); } catch (_) {}
+      }
+      saveVol(Math.round(cur.vol * 100));
+      range.addEventListener('input',  () => saveVol(parseInt(range.value, 10)));
+      range.addEventListener('change', () => CCSound.play(cur.id, cur.vol)); // preview on release
+      testBtn.addEventListener('click', () => CCSound.play(cur.id, cur.vol));
+
+      function render() {
+        const zh = document.documentElement.dataset.lang === 'zh';
+        listEl.innerHTML = '';
+        CCSound.SOUNDS.forEach(s => {
+          const row = document.createElement('div');
+          row.className = 'sound-item' + (s.id === cur.id ? ' sel' : '');
+          const radio = document.createElement('span'); radio.className = 'sound-radio';
+          const name  = document.createElement('span'); name.className = 'sound-name';
+          name.textContent = zh ? s.zh : s.en;
+          const play  = document.createElement('button'); play.className = 'sound-play';
+          play.type = 'button'; play.textContent = '▶'; play.title = zh ? '试听' : 'Preview';
+          play.addEventListener('click', (e) => { e.stopPropagation(); CCSound.play(s.id, cur.vol); });
+          row.addEventListener('click', () => {
+            cur.id = s.id;
+            try { localStorage.setItem('cc-sound', s.id); } catch (_) {}
+            render();
+            CCSound.play(s.id, cur.vol);   // confirm the choice audibly
+          });
+          row.append(radio, name, play);
+          listEl.appendChild(row);
+        });
+      }
+      render();
+      // Re-render labels when the language is toggled.
+      const lb = document.getElementById('lang-btn');
+      if (lb) lb.addEventListener('click', () => setTimeout(render, 0));
+    })();
+
+    // ---- Guide: OS sub-tabs (macOS / Windows / Ubuntu) ----
+    (function () {
+      const osTabs = document.querySelectorAll('.os-tab');
+      const osPanels = document.querySelectorAll('.os-panel');
+      osTabs.forEach(t => t.addEventListener('click', () => {
+        const os = t.dataset.os;
+        osTabs.forEach(x => x.classList.toggle('active', x.dataset.os === os));
+        osPanels.forEach(p => { p.style.display = p.dataset.os === os ? '' : 'none'; });
+      }));
+    })();
+
+    // Emit both languages; CSS (html[data-lang]) shows the active one.
+    function bi(zh, en) { return '<span class="i18n lang-zh">' + zh + '</span><span class="i18n lang-en">' + en + '</span>'; }
+    function fmtN(n) { return (n || 0).toLocaleString('en-US'); }
+    function kv(k, v) {
+      return '<div style="display:flex;justify-content:space-between;gap:8px">'
+        + '<span style="color:var(--text-dim)">' + k + '</span>'
+        + '<span style="color:var(--text);font-weight:600">' + v + '</span></div>';
+    }
+
+    // ---- History tab: session manager (list + full transcript) ----
+    // Lists every local Claude/Codex/Gemini session from /api/sessions, shows a
+    // session's full conversation, copies/opens its resume command, or deletes it.
+    (function () {
+      const PROV = {
+        claude: { label: 'Claude', color: '#d77757' },
+        codex:  { label: 'Codex',  color: '#10a37f' },
+        gemini: { label: 'Gemini', color: '#4f8cff' },
+      };
+      const ROLE = { user: ['用户', 'User'], assistant: ['AI', 'AI'], tool: ['工具', 'Tool'] };
+      const COLLAPSE = 2000;
+      const $ = (id) => document.getElementById(id);
+      const lang = () => (document.documentElement.dataset.lang === 'zh' ? 'zh' : 'en');
+      const t = (zh, en) => (lang() === 'zh' ? zh : en);
+      function esc(s) { const d = document.createElement('div'); d.textContent = (s == null ? '' : s); return d.innerHTML; }
+      function basename(p) { const n = (p || '').replace(/[\/\\]+$/, '').split(/[\/\\]/).pop(); return n || p; }
+      function fmtDT(ms) { try { return new Date(ms).toLocaleString(); } catch (e) { return ''; } }
+      function relTime(ms) {
+        if (!ms) return '';
+        const d = Date.now() - ms;
+        if (d < 60000) return t('刚刚', 'just now');
+        const m = Math.floor(d / 60000); if (m < 60) return m + t(' 分钟前', 'm ago');
+        const h = Math.floor(m / 60); if (h < 24) return h + t(' 小时前', 'h ago');
+        const dd = Math.floor(h / 24); if (dd < 30) return dd + t(' 天前', 'd ago');
+        try { return new Date(ms).toLocaleDateString(); } catch (e) { return ''; }
+      }
+      function toast(msg) {
+        let el = $('sm-toast');
+        if (!el) {
+          el = document.createElement('div'); el.id = 'sm-toast';
+          el.style.cssText = 'position:fixed;left:50%;bottom:28px;transform:translateX(-50%);z-index:300;'
+            + 'background:var(--panel-solid);border:1px solid var(--border-strong);color:var(--text);'
+            + 'padding:9px 16px;border-radius:10px;font-size:12.5px;box-shadow:0 10px 30px rgba(0,0,0,.35);opacity:0;transition:opacity .15s;';
+          document.body.appendChild(el);
+        }
+        el.textContent = msg; el.style.opacity = '1';
+        clearTimeout(el._t); el._t = setTimeout(() => { el.style.opacity = '0'; }, 1800);
+      }
+
+      let all = [];        // every session (newest first)
+      let current = null;  // selected SessionMeta
+
+      function renderList() {
+        const q = ($('sm-search').value || '').trim().toLowerCase();
+        const f = $('sm-filter').value;
+        const items = all.filter((s) =>
+          (!f || s.providerId === f) &&
+          (!q || (s.title || '').toLowerCase().includes(q) || (s.projectDir || '').toLowerCase().includes(q)));
+        $('sm-count').textContent = items.length;
+        const box = $('sm-items');
+        if (!items.length) { box.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px">' + t('没有会话', 'No sessions') + '</div>'; return; }
+        box.innerHTML = items.map((s) => {
+          const p = PROV[s.providerId] || { label: s.providerId, color: 'var(--text-dim)' };
+          const ts = s.lastActiveAt || s.createdAt;
+          const active = current && current.sourcePath === s.sourcePath;
+          return '<div class="sm-item' + (active ? ' active' : '') + '" data-i="' + all.indexOf(s) + '">'
+            + '<div class="sm-item-t">' + esc(s.title || s.sessionId) + '</div>'
+            + '<div class="sm-item-m">'
+            +   '<span class="sm-item-badge" style="background:' + p.color + '22;color:' + p.color + '">' + esc(p.label) + '</span>'
+            +   '<span>' + relTime(ts) + '</span>'
+            + '</div></div>';
+        }).join('');
+      }
+
+      function renderMsgs(msgs) {
+        const box = $('sm-msgs');
+        box.innerHTML = msgs.map((m, i) => {
+          const role = (m.role || '').toLowerCase();
+          const cls = role === 'user' ? 'user' : role === 'assistant' ? 'assistant' : 'tool';
+          const rl = ROLE[cls] || [role, role];
+          const long = m.content.length > COLLAPSE;
+          const shown = long ? m.content.slice(0, COLLAPSE) : m.content;
+          return '<div class="sm-msg ' + cls + '">'
+            + '<div class="sm-msg-h"><span class="sm-role ' + cls + '">' + bi(rl[0], rl[1]) + '</span>'
+            +   (m.ts ? '<span class="sm-msg-ts">' + fmtDT(m.ts) + '</span>' : '') + '</div>'
+            + '<div class="sm-msg-c">' + esc(shown) + (long ? '…' : '') + '</div>'
+            + (long ? '<button class="sm-msg-more" data-i="' + i + '">' + bi('展开完整内容', 'Expand') + '</button>' : '')
+            + '</div>';
+        }).join('');
+        box.querySelectorAll('.sm-msg-more').forEach((btn) => {
+          btn.addEventListener('click', () => {
+            const i = +btn.dataset.i; const c = btn.previousElementSibling;
+            c.textContent = msgs[i].content; btn.remove();
+          });
+        });
+      }
+
+      async function openSession(s) {
+        current = s; renderList();
+        $('sm-detail-empty').style.display = 'none';
+        $('sm-detail-body').style.display = 'flex';
+        $('panel-history').classList.add('detail-open'); // mobile: swap to transcript view
+        $('sm-dtitle').textContent = s.title || s.sessionId;
+        const p = PROV[s.providerId] || { label: s.providerId };
+        const ts = s.lastActiveAt || s.createdAt;
+        $('sm-dmeta').innerHTML = '<span style="color:' + (p.color || 'var(--text-dim)') + ';font-weight:700">' + esc(p.label) + '</span>'
+          + (ts ? '<span>' + fmtDT(ts) + '</span>' : '')
+          + (s.projectDir ? '<span title="' + esc(s.projectDir) + '">📁 ' + esc(basename(s.projectDir)) + '</span>' : '');
+        $('sm-cmd-text').textContent = s.resumeCommand || '';
+        $('sm-msgcount').textContent = '…';
+        $('sm-msgs').innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px">' + t('加载中…', 'Loading…') + '</div>';
+        let msgs;
+        try {
+          const r = await fetch('/api/sessions/messages?provider=' + encodeURIComponent(s.providerId) + '&path=' + encodeURIComponent(s.sourcePath));
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          msgs = await r.json();
+        } catch (e) { $('sm-msgs').innerHTML = '<div style="padding:16px;color:var(--err)">⚠ ' + t('加载失败 ', 'Failed ') + esc('' + e) + '</div>'; return; }
+        if (current !== s) return; // user switched while loading
+        $('sm-msgcount').textContent = msgs.length;
+        renderMsgs(msgs);
+        $('sm-msgs').scrollTop = 0;
+      }
+
+      async function resume() {
+        if (!current || !current.resumeCommand) return;
+        try {
+          const r = await fetch('/api/sessions/resume', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cmd: current.resumeCommand, cwd: current.projectDir || null, name: current.title || null }),
+          });
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          toast(t('已在控制台新建窗口恢复该会话', 'Opened a new console window to resume'));
+        } catch (e) { toast(t('恢复失败 ', 'Resume failed ') + e); }
+      }
+
+      // Inline two-step delete — native confirm() is a no-op in the desktop webview.
+      let armed = false, armTimer = null;
+      function del() {
+        if (!current) return;
+        const btn = $('sm-delete');
+        if (!armed) {
+          armed = true; btn.dataset.o = btn.innerHTML; btn.textContent = t('确认删除?', 'Confirm?');
+          clearTimeout(armTimer); armTimer = setTimeout(() => { armed = false; btn.innerHTML = btn.dataset.o; }, 3000);
+          return;
+        }
+        clearTimeout(armTimer); armed = false; btn.innerHTML = btn.dataset.o;
+        doDelete();
+      }
+      async function doDelete() {
+        const s = current;
+        try {
+          const r = await fetch('/api/sessions/delete', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ providerId: s.providerId, sessionId: s.sessionId, sourcePath: s.sourcePath }),
+          });
+          if (!r.ok) throw new Error('HTTP ' + r.status + ' ' + (await r.text()));
+          all = all.filter((x) => x.sourcePath !== s.sourcePath);
+          current = null;
+          $('sm-detail-body').style.display = 'none'; $('sm-detail-empty').style.display = '';
+          $('panel-history').classList.remove('detail-open'); // mobile: back to the list
+          renderList();
+          toast(t('已删除', 'Deleted'));
+        } catch (e) { toast(t('删除失败 ', 'Delete failed ') + e); }
+      }
+
+      $('sm-items').addEventListener('click', (e) => {
+        const it = e.target.closest('.sm-item'); if (!it) return;
+        const s = all[+it.dataset.i]; if (s) openSession(s);
+      });
+      $('sm-search').addEventListener('input', renderList);
+      $('sm-filter').addEventListener('change', renderList);
+      $('sm-refresh').addEventListener('click', () => load());
+      $('sm-back').addEventListener('click', () =>
+        $('panel-history').classList.remove('detail-open')); // mobile: return to the list
+      $('sm-cmd-copy').addEventListener('click', () => {
+        const txt = $('sm-cmd-text').textContent;
+        try { navigator.clipboard.writeText(txt); } catch (e) {}
+        const b = $('sm-cmd-copy'); const o = b.textContent; b.textContent = '✓'; setTimeout(() => { b.textContent = o; }, 900);
+      });
+      $('sm-resume').addEventListener('click', resume);
+      $('sm-delete').addEventListener('click', del);
+
+      async function load() {
+        const si = $('sm-search'); si.placeholder = si.dataset['ph' + (lang() === 'zh' ? 'Zh' : 'En')] || '';
+        const box = $('sm-items');
+        box.innerHTML = '<div style="padding:16px;color:var(--text-faint);font-size:12px">' + t('加载中…', 'Loading…') + '</div>';
+        try {
+          const r = await fetch('/api/sessions'); if (!r.ok) throw new Error('HTTP ' + r.status);
+          all = await r.json();
+        } catch (e) { box.innerHTML = '<div style="padding:16px;color:var(--err)">⚠ ' + esc('' + e) + '</div>'; return; }
+        renderList();
+      }
+      // The tab-switch hook calls loadHistory() the first time History is opened.
+      window.loadHistory = load;
+    })();
+
+    // fill in a couple of live facts for the About tab via a short-lived WS hello
+    document.getElementById('kv-host').textContent = location.host;
+    // Remote address = however you actually reached this page. If that's not a
+    // loopback host, you're coming in over a tunnel/LAN, so show that origin;
+    // otherwise it's local only. (No hardcoded domain — this reflects YOUR setup.)
+    (function () {
+      const h = location.hostname;
+      const isLocal = h === '127.0.0.1' || h === 'localhost' || h === '::1' || h === '[::1]';
+      if (isLocal) document.getElementById('kv-remote').innerHTML = bi('仅本地', 'Local only');
+      else document.getElementById('kv-remote').textContent = location.origin;
+    })();
+
+    // Account tab: in-app email/password (proxied by the daemon); OAuth via browser.
+    (function () {
+      const CP = 'https://app.cchub.cloud';
+      function lang() { return document.documentElement.dataset.lang === 'zh' ? 'zh' : 'en'; }
+      function ext(url) {
+        // System browser via the shell plugin; fall back to a tab / same-tab nav.
+        try {
+          var T = window.__TAURI__;
+          if (T && T.core && T.core.invoke) {
+            T.core.invoke('plugin:shell|open', { path: url }).catch(function () { if (!window.open(url, '_blank')) location.href = url; });
+            return;
+          }
+        } catch (e) {}
+        if (!window.open(url, '_blank')) location.href = url;
+      }
+      const $ = (id) => document.getElementById(id);
+      function setPlaceholders() {
+        ['acc-email', 'acc-pw'].forEach((id) => { const el = $(id); if (el) el.placeholder = el.dataset['ph' + (lang() === 'zh' ? 'Zh' : 'En')] || ''; });
+      }
+      function render(me) {
+        const signedIn = !!(me && me.signedIn);
+        const pending = !!(me && me.pendingVerify);
+        $('acc-signedout').style.display = (signedIn || pending) ? 'none' : '';
+        $('acc-pending').style.display = pending ? '' : 'none';
+        $('acc-signedin').style.display = signedIn ? '' : 'none';
+        if (pending) {
+          $('acc-pending-email').textContent = me.email || '';
+          $('acc-pending-email-en').textContent = me.email || '';
+        }
+        if (signedIn) {
+          $('acc-who').textContent = me.email || '';
+          $('acc-plan').textContent = me.plan || (lang() === 'zh' ? '公测免费' : 'free beta');
+          $('acc-verify').style.display = 'none';
+        }
+      }
+      function msg(text, kind) { const m = $('acc-msg'); m.textContent = text || ''; m.className = 'acc-msg' + (kind ? ' ' + kind : ''); }
+      function pmsg(text, kind) { const m = $('acc-pmsg'); m.textContent = text || ''; m.className = 'acc-msg' + (kind ? ' ' + kind : ''); }
+      async function fetchMe() { try { return await (await fetch('/api/account/me')).json(); } catch (e) { return { signedIn: false }; } }
+      async function refresh() { render(await fetchMe()); }
+      async function submit(kind) {
+        const email = $('acc-email').value.trim(), pw = $('acc-pw').value;
+        if (!email || !pw) { msg(lang() === 'zh' ? '请输入邮箱和密码' : 'Enter email and password', 'err'); return; }
+        msg(lang() === 'zh' ? '处理中…' : 'Working…', '');
+        try {
+          const r = await fetch('/api/account/' + kind, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password: pw }) });
+          if (!r.ok) throw new Error(await r.text() || ('HTTP ' + r.status));
+          const me = await r.json();
+          $('acc-pw').value = '';
+          if (me.pendingVerify) msg(lang() === 'zh' ? '请查收验证邮件' : 'Check your inbox to verify', 'ok');
+          else msg(kind === 'register' ? (lang() === 'zh' ? '注册成功' : 'Registered') : (lang() === 'zh' ? '登录成功' : 'Signed in'), 'ok');
+          render(me);
+        } catch (e) { msg('' + e, 'err'); }
+      }
+      $('acc-login').addEventListener('click', () => submit('login'));
+      $('acc-register').addEventListener('click', () => submit('register'));
+      $('acc-pw').addEventListener('keydown', (e) => { if (e.key === 'Enter') submit('login'); });
+      $('acc-github').addEventListener('click', () => ext(CP + '/api/auth/github'));
+      $('acc-google').addEventListener('click', () => ext(CP + '/api/auth/google'));
+      $('acc-subscribe').addEventListener('click', () => ext(CP + '/subscribe'));
+      // verify-pending actions
+      $('acc-resend').addEventListener('click', async () => {
+        pmsg(lang() === 'zh' ? '发送中…' : 'Sending…', '');
+        try { const r = await fetch('/api/account/resend-verify', { method: 'POST' }); if (!r.ok) throw new Error(await r.text()); pmsg(lang() === 'zh' ? '已重新发送,请查收' : 'Sent — check your inbox', 'ok'); }
+        catch (e) { pmsg('' + e, 'err'); }
+      });
+      $('acc-verified').addEventListener('click', async () => {
+        pmsg(lang() === 'zh' ? '检查中…' : 'Checking…', '');
+        const me = await fetchMe();
+        if (me.signedIn) {
+          render(me);
+          // verified now → turn the private tunnel on.
+          fetch('/api/account/connect-remote', { method: 'POST' }).catch(() => {});
+        } else { pmsg(lang() === 'zh' ? '还未检测到验证,请先点邮件里的链接' : 'Not verified yet — click the link in your email first', 'err'); }
+      });
+      $('acc-cancel').addEventListener('click', async () => {
+        try { await fetch('/api/account/logout', { method: 'POST' }); } catch (e) {}
+        render({ signedIn: false }); pmsg('', ''); msg('', '');
+      });
+      $('acc-logout').addEventListener('click', async () => {
+        try { await fetch('/api/account/logout', { method: 'POST' }); } catch (e) {}
+        render({ signedIn: false }); msg('', '');
+      });
+      const st = $('acc-remote-state');
+      if (st) {
+        fetch('/api/tunnel/status').then((r) => r.json()).then((s) => {
+          if (s.state === 'up') st.textContent = '✓ ' + s.url.replace(/\/\?token=.*$/, '');
+          else st.innerHTML = bi('未连接', 'not connected');
+        }).catch(() => {});
+      }
+      setPlaceholders();
+      refresh();
+    })();
+
+    // Fetch daemon version / session over a short-lived WS hello.
+    try {
+      const ws = new WebSocket((location.protocol === 'https:' ? 'wss' : 'ws') + '://' + location.host + '/ws');
+      const timer = setTimeout(() => { try { ws.close(); } catch (_) {} }, 4000);
+      ws.onmessage = (ev) => {
+        try {
+          const m = JSON.parse(ev.data);
+          if (m.type === 'hello') {
+            if (m.daemon_version) { document.getElementById('about-ver').textContent = 'v' + m.daemon_version; document.getElementById('kv-ver').textContent = m.daemon_version; }
+            if (m.tmux_session) document.getElementById('kv-session').textContent = 'tmux ' + m.tmux_session;
+            clearTimeout(timer); ws.close();
+          }
+        } catch (_) {}
+      };
+      ws.onerror = () => { clearTimeout(timer); };
+    } catch (_) {}
+  </script>
+</body>
+</html>
