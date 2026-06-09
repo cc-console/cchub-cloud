@@ -195,7 +195,7 @@ jobs:
   # build never publishes. The default GITHUB_TOKEN is scoped to this repo only and
   # cannot write to cc-console/releases, so this needs a PAT in the repo secret
   # RELEASES_SYNC_TOKEN with: contents:write on cc-console/releases AND
-  # contents:read on cc-console/cc.console (a classic token with `repo` scope, or a
+  # contents:read on THIS repo (a classic token with `repo` scope, or a
   # fine-grained token granting both, works).
   sync:
     name: sync to public download repo
@@ -209,6 +209,10 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.RELEASES_SYNC_TOKEN }}
           TAG: ${{ github.ref_name }}
+          # Pull the just-built assets from THIS repo's release (the build job
+          # publishes here). sync-release.sh defaults SRC to the old monorepo, so
+          # pass the current repo explicitly now that releases are cut here.
+          SRC_REPO: ${{ github.repository }}
         run: |
           set -euo pipefail
           if [ -z "${GH_TOKEN:-}" ]; then
