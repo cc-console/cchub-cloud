@@ -11,9 +11,18 @@
       var light = m === 'light' || (m === 'system' && window.matchMedia('(prefers-color-scheme: light)').matches);
       if (light) document.documentElement.classList.add('light');
     } catch (e) {} })();
+    /* apply saved language before paint (default 中文; shared with settings/guide via cc_lang) */
+    (function () { try {
+      var l = localStorage.getItem('cc_lang');
+      document.documentElement.dataset.lang = (l === 'en' ? 'en' : 'zh');
+    } catch (e) { document.documentElement.dataset.lang = 'zh'; } })();
   </script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@xterm/xterm@5.5.0/css/xterm.css">
   <style>
+    /* i18n: keep both languages in the DOM, show only the active one via html[data-lang] */
+    .i18n { display: none; }
+    html[data-lang="en"] .lang-en { display: revert; }
+    html[data-lang="zh"] .lang-zh { display: revert; }
     :root {
       color-scheme: dark;
       --bg: #090a0e;
@@ -565,37 +574,40 @@
     <span class="brand"><span class="brand-dot"></span>cc-console</span>
     <span class="grow"></span>
     <span id="meta" class="meta"></span>
-    <span id="conn" class="badge pending">connecting…</span>
-    <button id="auto-btn" class="icon-btn" title="Autopilot — auto-confirm Claude Yes/No prompts">
-      <span class="ic" aria-hidden="true">🤖</span><span id="auto-lbl">Auto Off</span>
+    <span id="conn" class="badge pending">连接中…</span>
+    <button id="auto-btn" class="icon-btn" data-tzh="自动驾驶 — 自动确认 Claude 的 Yes/No 提示" data-ten="Autopilot — auto-confirm Claude Yes/No prompts">
+      <span class="ic" aria-hidden="true">🤖</span><span id="auto-lbl">自动 关</span>
     </button>
-    <button id="font-dec" class="icon-btn" title="Smaller text"><span class="ic" aria-hidden="true">A−</span></button>
-    <button id="font-inc" class="icon-btn" title="Larger text"><span class="ic" aria-hidden="true">A+</span></button>
-    <button id="view-btn" class="icon-btn" title="Terminal display mode (Fit / zoom)">
-      <span class="ic" aria-hidden="true">⤢</span><span id="view-lbl">Fit</span>
+    <button id="font-dec" class="icon-btn" data-tzh="缩小字号" data-ten="Smaller text"><span class="ic" aria-hidden="true">A−</span></button>
+    <button id="font-inc" class="icon-btn" data-tzh="放大字号" data-ten="Larger text"><span class="ic" aria-hidden="true">A+</span></button>
+    <button id="view-btn" class="icon-btn" data-tzh="终端显示模式（适应 / 缩放）" data-ten="Terminal display mode (Fit / zoom)">
+      <span class="ic" aria-hidden="true">⤢</span><span id="view-lbl">适应</span>
     </button>
-    <button id="theme-btn" class="icon-btn" title="Theme (Auto / Dark / Light)">
-      <span class="ic" aria-hidden="true">🖥</span><span id="theme-lbl">Auto</span>
+    <button id="theme-btn" class="icon-btn" data-tzh="主题（自动 / 深色 / 浅色）" data-ten="Theme (Auto / Dark / Light)">
+      <span class="ic" aria-hidden="true">🖥</span><span id="theme-lbl">自动</span>
     </button>
-    <a href="/remote.html" id="remote-link" class="icon-btn" title="Remote access">
-      <span class="ic">🌐</span><span class="lbl">Remote</span>
+    <button id="lang-btn" class="icon-btn" title="中文 / English">
+      <span class="ic" aria-hidden="true">🌏</span><span id="lang-lbl">中文</span>
+    </button>
+    <a href="/remote.html" id="remote-link" class="icon-btn" data-tzh="远程访问" data-ten="Remote access">
+      <span class="ic">🌐</span><span class="lbl"><span class="i18n lang-zh">远程</span><span class="i18n lang-en">Remote</span></span>
     </a>
-    <a href="/settings.html" id="settings-link" class="icon-btn" title="Settings">
-      <span class="ic">⚙️</span><span class="lbl">Settings</span>
+    <a href="/settings.html" id="settings-link" class="icon-btn" data-tzh="设置" data-ten="Settings">
+      <span class="ic">⚙️</span><span class="lbl"><span class="i18n lang-zh">设置</span><span class="i18n lang-en">Settings</span></span>
     </a>
   </header>
 
   <div id="main">
-    <button id="sb-expand" title="Show windows">▶</button>
+    <button id="sb-expand" data-tzh="显示窗口列表" data-ten="Show windows">▶</button>
     <aside id="sidebar">
       <div id="sidebar-head">
-        <span id="sb-label">Windows</span>
-        <button id="new-btn" title="New window">+ new</button>
-        <button id="sb-collapse" title="Collapse sidebar">◀</button>
+        <span id="sb-label"><span class="i18n lang-zh">窗口</span><span class="i18n lang-en">Windows</span></span>
+        <button id="new-btn" data-tzh="新建窗口" data-ten="New window">+ <span class="i18n lang-zh">新建</span><span class="i18n lang-en">new</span></button>
+        <button id="sb-collapse" data-tzh="收起侧栏" data-ten="Collapse sidebar">◀</button>
       </div>
       <div id="windows-list"></div>
     </aside>
-    <div id="sb-resize" title="Drag to resize"></div>
+    <div id="sb-resize" data-tzh="拖动调整宽度" data-ten="Drag to resize"></div>
     <div id="scrim"></div>
     <div id="term-wrap"><div id="term"></div></div>
     <!-- bottom quick-key bar (mobile): fixed at the bottom, in-flow so it never covers the terminal -->
@@ -603,7 +615,7 @@
       <button data-key="up" aria-label="Up">↑</button>
       <button data-key="down" aria-label="Down">↓</button>
       <button data-key="enter" aria-label="Enter">⏎</button>
-      <button id="fk-more" aria-label="More keys" title="更多按键">⌨</button>
+      <button id="fk-more" aria-label="More keys" data-tzh="更多按键" data-ten="More keys">⌨</button>
       <div id="fk-pop">
         <button data-key="left" aria-label="Left">←</button>
         <button data-key="right" aria-label="Right">→</button>
@@ -617,13 +629,13 @@
 
   <div id="modal-backdrop">
     <div id="modal">
-      <h3>New Window</h3>
-      <p class="sub">Spin up a new tmux window.</p>
-      <label>Name <input id="m-name" placeholder="optional"></label>
-      <label>Working dir <input id="m-cwd" placeholder="~/code/..." autocomplete="off" spellcheck="false"></label>
+      <h3><span class="i18n lang-zh">新建窗口</span><span class="i18n lang-en">New Window</span></h3>
+      <p class="sub"><span class="i18n lang-zh">启动一个新的 tmux 窗口。</span><span class="i18n lang-en">Spin up a new tmux window.</span></p>
+      <label><span class="i18n lang-zh">名称</span><span class="i18n lang-en">Name</span> <input id="m-name" data-pzh="可选" data-pen="optional" placeholder="可选"></label>
+      <label><span class="i18n lang-zh">工作目录</span><span class="i18n lang-en">Working dir</span> <input id="m-cwd" placeholder="~/code/..." autocomplete="off" spellcheck="false"></label>
       <div id="dir-browser">
         <div id="db-head">
-          <button id="db-up" type="button" title="Parent folder">⬆</button>
+          <button id="db-up" type="button" data-tzh="上级目录" data-ten="Parent folder">⬆</button>
           <span id="db-path" title="">~</span>
         </div>
         <div id="db-list"></div>
@@ -633,12 +645,12 @@
         <button type="button" class="agent active" data-cmd="claude">Claude</button>
         <button type="button" class="agent" data-cmd="codex">Codex</button>
         <button type="button" class="agent" data-cmd="gemini">Gemini</button>
-        <button type="button" class="agent" data-cmd="">Terminal</button>
+        <button type="button" class="agent" data-cmd=""><span class="i18n lang-zh">终端</span><span class="i18n lang-en">Terminal</span></button>
       </div>
-      <label>Command <input id="m-cmd" value="claude" placeholder="empty = plain shell (Terminal)"></label>
+      <label><span class="i18n lang-zh">命令</span><span class="i18n lang-en">Command</span> <input id="m-cmd" value="claude" data-pzh="留空 = 普通终端 (Terminal)" data-pen="empty = plain shell (Terminal)" placeholder="留空 = 普通终端 (Terminal)"></label>
       <div class="actions">
-        <button id="m-cancel">Cancel</button>
-        <button id="m-ok" class="primary">Create</button>
+        <button id="m-cancel"><span class="i18n lang-zh">取消</span><span class="i18n lang-en">Cancel</span></button>
+        <button id="m-ok" class="primary"><span class="i18n lang-zh">创建</span><span class="i18n lang-en">Create</span></button>
       </div>
     </div>
   </div>
@@ -649,7 +661,7 @@
       <p class="sub" id="cf-msg"></p>
       <input id="cf-input" type="text" autocomplete="off" spellcheck="false" style="display:none">
       <div class="actions">
-        <button id="cf-cancel" type="button">Cancel</button>
+        <button id="cf-cancel" type="button"><span class="i18n lang-zh">取消</span><span class="i18n lang-en">Cancel</span></button>
         <button id="cf-ok" type="button" class="primary">OK</button>
       </div>
     </div>
@@ -674,10 +686,36 @@
     const TERM_COLS = 120, TERM_ROWS = 40;
     term.resize(TERM_COLS, TERM_ROWS);
 
+    // ---- i18n (默认中文; 与 settings/guide 共享 localStorage 的 cc_lang) ----
+    // Static text uses dual <span class="i18n lang-zh/lang-en"> spans (CSS shows one).
+    // Attributes/JS-set text use data-tzh/ten (title), data-pzh/pen (placeholder),
+    // or the tr(zh,en) helper. applyLang() re-renders everything JS owns.
+    function lang() { return document.documentElement.dataset.lang === 'en' ? 'en' : 'zh'; }
+    function tr(zh, en) { return lang() === 'en' ? en : zh; }
+    function applyLang() {
+      const zh = lang() === 'zh';
+      document.querySelectorAll('[data-tzh]').forEach(el => { el.title = zh ? el.dataset.tzh : el.dataset.ten; });
+      document.querySelectorAll('[data-pzh]').forEach(el => { el.placeholder = zh ? el.dataset.pzh : el.dataset.pen; });
+      const ll = document.getElementById('lang-lbl'); if (ll) ll.textContent = zh ? '中文' : 'EN';
+      // re-render the bits JS sets imperatively
+      try { applyTheme(themeMode); } catch (_) {}
+      try { applyAutopilot(autopilot); } catch (_) {}
+      try { applyView(); } catch (_) {}
+      try { refreshMeta(); } catch (_) {}
+      try { renderWindows(); } catch (_) {}
+      try { renderStatus(); } catch (_) {}
+    }
+    document.getElementById('lang-btn').addEventListener('click', () => {
+      const next = lang() === 'en' ? 'zh' : 'en';
+      document.documentElement.dataset.lang = next;
+      try { localStorage.setItem('cc_lang', next); } catch (_) {}
+      applyLang();
+    });
+
     // ---- theme: dark / light / system (default system) ----
     const THEMES = ['system', 'dark', 'light'];
     const THEME_ICON = { system: '🖥', dark: '🌙', light: '☀️' };
-    const THEME_LBL  = { system: 'Auto', dark: 'Dark', light: 'Light' };
+    const THEME_LBL  = { system: ['自动', 'Auto'], dark: ['深色', 'Dark'], light: ['浅色', 'Light'] };
     const mqLight = window.matchMedia('(prefers-color-scheme: light)');
     const isLightMode = (mode) => mode === 'light' || (mode === 'system' && mqLight.matches);
     function applyTheme(mode) {
@@ -687,7 +725,7 @@
         ? { background: '#ffffff', foreground: '#1b2230', cursor: '#3a4252', cursorAccent: '#ffffff', selectionBackground: 'rgba(86,102,238,0.25)' }
         : { background: '#06070a', foreground: '#e7e9ee', cursor: '#cdd3e0' };
       const tb = document.getElementById('theme-btn');
-      if (tb) { tb.querySelector('.ic').textContent = THEME_ICON[mode]; tb.querySelector('#theme-lbl').textContent = THEME_LBL[mode]; }
+      if (tb) { tb.querySelector('.ic').textContent = THEME_ICON[mode]; tb.querySelector('#theme-lbl').textContent = tr(THEME_LBL[mode][0], THEME_LBL[mode][1]); }
     }
     let themeMode = localStorage.getItem('cc-theme') || 'system';
     if (!THEMES.includes(themeMode)) themeMode = 'system';
@@ -708,7 +746,7 @@
     function applyAutopilot(on) {
       autopilot = !!on;
       autoBtn.classList.toggle('on', autopilot);
-      autoLbl.textContent = autopilot ? 'Auto On' : 'Auto Off';
+      autoLbl.textContent = autopilot ? tr('自动 开', 'Auto On') : tr('自动 关', 'Auto Off');
     }
     autoBtn.addEventListener('click', () => send({ type: 'set_autopilot', enabled: !autopilot }));
     applyAutopilot(false);
@@ -750,10 +788,20 @@
       version: null,
     };
 
-    function setStatus(cls, text) {
-      connEl.className = `badge ${cls}`;
+    // Status text can be a string or a () => string producer, so renderStatus() can
+    // re-localize it when the language toggles (e.g. the "disconnected · retry" badge).
+    let lastStatusCls = 'pending';
+    let lastStatus = () => tr('连接中…', 'connecting…');
+    function renderStatus() {
+      const text = lastStatus();
+      connEl.className = `badge ${lastStatusCls}`;
       connEl.textContent = text;
       connEl.title = text;          // tooltip keeps full text when collapsed to a dot on mobile
+    }
+    function setStatus(cls, textOrFn) {
+      lastStatusCls = cls;
+      lastStatus = typeof textOrFn === 'function' ? textOrFn : () => textOrFn;
+      renderStatus();
     }
     function refreshMeta() {
       metaEl.textContent = state.session
@@ -796,11 +844,11 @@
       // The switcher button reflects the active window + any pending alert.
       const act = arr.find(w => w.active);
       const anyAwaiting = arr.some(w => w.awaiting_input);
-      swName.textContent = act ? `${act.index} · ${act.name}` : 'no window';
+      swName.textContent = act ? `${act.index} · ${act.name}` : tr('无窗口', 'no window');
       swBtn.classList.toggle('has-alert', anyAwaiting);
       listEl.innerHTML = '';
       if (arr.length === 0) {
-        listEl.innerHTML = '<div class="empty">No windows yet</div>';
+        listEl.innerHTML = `<div class="empty">${tr('还没有窗口', 'No windows yet')}</div>`;
         return;
       }
       for (const w of arr) {
@@ -813,13 +861,13 @@
             <span class="win-idx">${w.index}</span>
             <span class="win-name">${escapeHtml(w.name)}</span>
             ${agentTag(w)}
-            <button class="win-rename" title="Rename window">✎</button>
-            <button class="win-chdir" title="Change working directory">📁</button>
-            ${arr.length > 1 ? `<button class="win-close" title="Close this window">×</button>` : ''}
+            <button class="win-rename" title="${tr('重命名窗口', 'Rename window')}">✎</button>
+            <button class="win-chdir" title="${tr('切换工作目录', 'Change working directory')}">📁</button>
+            ${arr.length > 1 ? `<button class="win-close" title="${tr('关闭此窗口', 'Close this window')}">×</button>` : ''}
           </div>
           <div class="win-cwd">${escapeHtml(shortCwd(w.cwd))}</div>
           ${w.awaiting_input ? `
-            <div class="awaiting-badge">🔔&nbsp; waiting for you${w.awaiting_prompt ? ' — ' + escapeHtml(w.awaiting_prompt) : ''}</div>
+            <div class="awaiting-badge">🔔&nbsp; ${tr('等待你确认', 'waiting for you')}${w.awaiting_prompt ? ' — ' + escapeHtml(w.awaiting_prompt) : ''}</div>
           ` : ''}
           ${w.claude ? `
             <div class="claude-meta">
@@ -840,7 +888,7 @@
         row.querySelector('.win-rename')?.addEventListener('click', async (e) => {
           e.stopPropagation();
           const cur = w.name || '';
-          const next = await uiPrompt('Rename window', cur, { title: 'Rename window' });
+          const next = await uiPrompt(tr('重命名窗口', 'Rename window'), cur, { title: tr('重命名窗口', 'Rename window') });
           if (next == null) return;
           const name = next.trim();
           if (!name || name === cur) return;
@@ -851,7 +899,7 @@
           const cur = w.cwd || '';
           // Sent to the window's shell as `cd`, so it only lands when that window is
           // at a shell prompt (not while an agent is running) — flag that in the prompt.
-          const next = await uiPrompt('New working directory (sent as cd — only works at a shell prompt)', cur, { title: 'Change directory' });
+          const next = await uiPrompt(tr('新的工作目录（以 cd 发送 — 仅在 shell 提示符下生效）', 'New working directory (sent as cd — only works at a shell prompt)'), cur, { title: tr('切换目录', 'Change directory') });
           if (next == null) return;
           const path = next.trim();
           if (!path || path === cur) return;
@@ -859,10 +907,10 @@
         });
         row.querySelector('.win-close')?.addEventListener('click', async (e) => {
           e.stopPropagation();
-          const label = w.name || ('window ' + w.index);
+          const label = w.name || (tr('窗口 ', 'window ') + w.index);
           const extra = (w.current_command === 'claude' || w.claude)
-            ? '\nThis will end the agent session running in it.' : '';
-          const ok = await uiConfirm(`Close "${label}"?${extra}`, { title: 'Close window', okLabel: 'Close', danger: true });
+            ? tr('\n这会结束其中正在运行的 agent 会话。', '\nThis will end the agent session running in it.') : '';
+          const ok = await uiConfirm(tr(`关闭“${label}”？${extra}`, `Close "${label}"?${extra}`), { title: tr('关闭窗口', 'Close window'), okLabel: tr('关闭', 'Close'), danger: true });
           if (ok) send({ type: 'window_kill', window_id: w.id });
         });
         listEl.appendChild(row);
@@ -946,11 +994,11 @@
         // it isn't a real cwd, so don't put it in the input.
         const isDrives = d.path === '::drives';
         mCwd.value = isDrives ? '' : d.path;       // the browsed folder IS the chosen cwd
-        dbPath.textContent = isDrives ? 'This PC · 此电脑' : ellipsisLeft(d.path, 46);
-        dbPath.title = isDrives ? 'This PC' : d.path;
+        dbPath.textContent = isDrives ? tr('此电脑', 'This PC') : ellipsisLeft(d.path, 46);
+        dbPath.title = isDrives ? tr('此电脑', 'This PC') : d.path;
         dbParent = d.parent;
         dbUp.disabled = !d.parent;
-        if (!d.entries.length) { dbList.innerHTML = '<div class="db-empty">No subfolders here</div>'; return; }
+        if (!d.entries.length) { dbList.innerHTML = `<div class="db-empty">${tr('这里没有子文件夹', 'No subfolders here')}</div>`; return; }
         dbList.innerHTML = '';
         for (const e of d.entries) {
           const it = document.createElement('div');
@@ -964,7 +1012,7 @@
         }
         dbList.scrollTop = 0;
       } catch (_) {
-        dbList.innerHTML = '<div class="db-empty">Can’t open this folder</div>';
+        dbList.innerHTML = `<div class="db-empty">${tr('无法打开此文件夹', 'Can’t open this folder')}</div>`;
       }
     }
     dbUp.addEventListener('click', () => { if (dbParent) loadDirs(dbParent); });
@@ -974,7 +1022,7 @@
     // Tapping the breadcrumb drops into the editable path field so it's obvious you
     // can type/paste a path rather than only click through folders.
     dbPath.style.cursor = 'pointer';
-    dbPath.title = 'Click to edit the path';
+    dbPath.title = tr('点击编辑路径', 'Click to edit the path');
     dbPath.addEventListener('click', () => { mCwd.focus(); mCwd.select(); });
 
     // agent presets → set the command. "Terminal" (data-cmd="") leaves the command
@@ -1037,10 +1085,10 @@
     function uiConfirm(message, opts = {}) {
       return new Promise((resolve) => {
         cfResolve = resolve;
-        cfTitle.textContent = opts.title || 'Confirm';
+        cfTitle.textContent = opts.title || tr('确认', 'Confirm');
         cfMsg.textContent = message || ''; cfMsg.style.display = message ? '' : 'none';
         cfInput.style.display = 'none';
-        cfOk.textContent = opts.okLabel || 'OK';
+        cfOk.textContent = opts.okLabel || tr('确定', 'OK');
         cfOk.className = opts.danger ? 'danger' : 'primary';
         cfBackdrop.classList.add('show');
         setTimeout(() => cfOk.focus(), 30);
@@ -1049,10 +1097,10 @@
     function uiPrompt(message, defaultVal = '', opts = {}) {
       return new Promise((resolve) => {
         cfResolve = resolve;
-        cfTitle.textContent = opts.title || 'Input';
+        cfTitle.textContent = opts.title || tr('输入', 'Input');
         cfMsg.textContent = message || ''; cfMsg.style.display = message ? '' : 'none';
         cfInput.style.display = ''; cfInput.value = defaultVal || '';
-        cfOk.textContent = opts.okLabel || 'OK'; cfOk.className = 'primary';
+        cfOk.textContent = opts.okLabel || tr('确定', 'OK'); cfOk.className = 'primary';
         cfBackdrop.classList.add('show');
         setTimeout(() => { cfInput.focus(); cfInput.select(); }, 30);
       });
@@ -1085,11 +1133,11 @@
     }
 
     function connect() {
-      setStatus('pending', 'connecting…');
+      setStatus('pending', () => tr('连接中…', 'connecting…'));
       ws = new WebSocket(wsUrl);
 
       ws.onopen = () => {
-        setStatus('ok', 'connected');
+        setStatus('ok', () => tr('已连接', 'connected'));
         reconnectDelay = 1000;
         const { cols, rows } = term;
         ws.send(JSON.stringify({ type: 'resize', cols, rows }));
@@ -1103,7 +1151,7 @@
       };
 
       ws.onclose = (e) => {
-        setStatus('err', `disconnected (${e.code}) · retry in ${reconnectDelay / 1000}s`);
+        setStatus('err', () => tr(`已断开 (${e.code}) · ${reconnectDelay / 1000}s 后重连`, `disconnected (${e.code}) · retry in ${reconnectDelay / 1000}s`));
         setTimeout(connect, reconnectDelay);
         reconnectDelay = Math.min(reconnectDelay * 2, MAX_DELAY);
       };
@@ -1190,6 +1238,9 @@
         }
         case 'error': {
           console.error('server:', msg.message);
+          // Surface it — failures used to be silent (e.g. a window that wouldn't
+          // create just did nothing). uiConfirm works in the wry app too.
+          uiConfirm(msg.message || '', { title: tr('出错了', 'Error'), okLabel: tr('知道了', 'OK') });
           break;
         }
         default:
@@ -1324,7 +1375,7 @@
     }
     function applyView() {
       const m = VIEW_MODES[viewIdx];
-      viewLbl.textContent = m.label;
+      viewLbl.textContent = m.id === 'fit' ? tr('适应', 'Fit') : m.label;
       if (!isMobile()) {                       // desktop: natural grid at the user's font size
         document.body.classList.remove('term-fit');
         term.options.lineHeight = 1;
@@ -1426,6 +1477,7 @@
     setTimeout(applyView, 80); // once the first render has measurable cell metrics
 
     connect();
+    applyLang();   // set tooltips/placeholders + sync all JS-managed labels to the active language
   </script>
 </body>
 </html>

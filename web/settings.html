@@ -14,8 +14,8 @@
     /* apply saved language before paint (default English) */
     (function () { try {
       var l = localStorage.getItem('cc_lang');
-      document.documentElement.dataset.lang = (l === 'zh' ? 'zh' : 'en');
-    } catch (e) { document.documentElement.dataset.lang = 'en'; } })();
+      document.documentElement.dataset.lang = (l === 'en' ? 'en' : 'zh');
+    } catch (e) { document.documentElement.dataset.lang = 'zh'; } })();
   </script>
   <style>
     :root {
@@ -637,7 +637,7 @@ cc-console        # the startup log prints your URL + token</pre>
         try { localStorage.setItem('cc_lang', l); } catch (e) {}
         if (btn) btn.textContent = (l === 'en') ? '中文' : 'EN';
       }
-      setLang(document.documentElement.dataset.lang || 'en');
+      setLang(document.documentElement.dataset.lang || 'zh');
       if (btn) btn.addEventListener('click', () =>
         setLang(document.documentElement.dataset.lang === 'en' ? 'zh' : 'en'));
     })();

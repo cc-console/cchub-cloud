@@ -585,9 +585,10 @@ async fn session_resume_handler(
     State(state): State<Arc<AppState>>,
     Json(req): Json<SessionResumeReq>,
 ) -> impl IntoResponse {
+    let cwd = req.cwd.as_deref().map(expand_tilde);
     match state
         .session
-        .new_window(req.name.as_deref(), req.cwd.as_deref(), Some(req.cmd.as_str()))
+        .new_window(req.name.as_deref(), cwd.as_deref(), Some(req.cmd.as_str()))
     {
         Ok(()) => Json(serde_json::json!({ "ok": true })).into_response(),
         Err(e) => {
@@ -623,6 +624,20 @@ fn home_dir() -> String {
     crate::paths::home_dir()
         .map(|p| p.display().to_string())
         .unwrap_or_else(|| "/".to_string())
+}
+
+/// Expand a leading `~` / `~/…` (and the empty string) to the user's home dir;
+/// other paths pass through unchanged. tmux's `new-window -c` does NOT expand
+/// `~` itself — it would try to `chdir` into a literal "~" and fail — so the
+/// daemon must expand before handing a cwd to the session backend.
+fn expand_tilde(base: &str) -> String {
+    if base == "~" || base.is_empty() {
+        home_dir()
+    } else if let Some(rest) = base.strip_prefix("~/") {
+        format!("{}/{}", home_dir(), rest)
+    } else {
+        base.to_string()
+    }
 }
 
 /// Strip Windows' verbatim / extended-length prefix so canonicalized paths read
@@ -663,15 +678,7 @@ fn list_dirs(base: &str) -> Result<DirListing> {
         });
     }
 
-    let expanded = if base == "~" {
-        home_dir()
-    } else if let Some(rest) = base.strip_prefix("~/") {
-        format!("{}/{}", home_dir(), rest)
-    } else if base.is_empty() {
-        home_dir()
-    } else {
-        base.to_string()
-    };
+    let expanded = expand_tilde(base);
     let path = std::path::PathBuf::from(&expanded);
     let canon = std::fs::canonicalize(&path).unwrap_or(path);
     let mut entries = Vec::new();
@@ -1161,6 +1168,9 @@ async fn handle_client_message(
                     }
                 }
                 Ok(ClientMessage::WindowCreate { name, cwd, cmd }) => {
+                    // Expand `~` here — tmux's `new-window -c ~` fails on a literal "~"
+                    // (the new-window modal sends `~` as the default cwd on a fresh install).
+                    let cwd = cwd.as_deref().map(expand_tilde);
                     if let Err(e) = state.session.new_window(name.as_deref(), cwd.as_deref(), cmd.as_deref()) {
                         tracing::warn!(?e, "new_window failed");
                         let _ = socket
