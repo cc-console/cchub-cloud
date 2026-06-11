@@ -57,17 +57,43 @@ through anyone else's servers.**
 Download the **[.exe installer](https://cc.cchub.cloud/#download)** and run it
 (SmartScreen → More info → Run anyway). A built-in session engine — no tmux needed.
 
-### Ubuntu server (headless)
-Reach a remote box from your phone via your own `yourname.cchub.cloud` address:
+### Ubuntu — desktop
+1. Download the **[.deb](https://cc.cchub.cloud/#download)** (or the AppImage) and install it:
+   ```bash
+   sudo dpkg -i cc-console-linux-x64.deb
+   ```
+2. Install the dependencies — **tmux** (required) and **cloudflared** (only for remote access), one command at a time:
+   ```bash
+   sudo apt install -y tmux
+   sudo curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+   sudo chmod +x /usr/local/bin/cloudflared
+   ```
+   Also make sure the agent CLI you use (`claude` / `codex` / `gemini`) is on your `PATH`.
+3. Launch **cc-console** from your applications menu.
+
+### Ubuntu — server (terminal / headless)
+Reach a remote box from your phone via your own `yourname.cchub.cloud` address. First sign up at <https://cc.cchub.cloud> → set a name → **Generate device token** (`ccd_…`). Then SSH in and run each block:
+
+**1) Dependencies — tmux + cloudflared (one command at a time):**
 ```bash
-# 1) get a device code: sign up at https://cc.cchub.cloud → set a name → Generate device token
-# 2) on the server:
 sudo apt install -y tmux
+sudo curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared
+```
+
+**2) cc-console (on its own):**
+```bash
 curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"     # if it warns it's not on PATH
+```
+
+**3) Bind the device code + run:**
+```bash
 cc-console link        # paste the ccd_… device code
 cc-console             # opens at https://yourname.cchub.cloud
 ```
-Full server guide (proxy, cloudflared, systemd persistence): **[cc.cchub.cloud/#server](https://cc.cchub.cloud/#server)**.
+
+> Prerequisite: the server must reach the AI APIs (set up a proxy if needed) and you should be able to run `claude` yourself first. Full server guide (proxy, systemd persistence): **[cc.cchub.cloud/#server](https://cc.cchub.cloud/#server)**.
 
 ## How it works
 

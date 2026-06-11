@@ -513,13 +513,18 @@ cc-console        # the startup log prints your URL + token</pre>
 
       <div class="about-card os-panel" data-os="ubuntu" style="display:none">
         <h2><span class="i18n lang-zh">Ubuntu / Linux · 安装与运行</span><span class="i18n lang-en">Ubuntu / Linux · Install &amp; run</span></h2>
-        <p class="steps-h"><span class="i18n lang-zh">一行命令(桌面或服务器均可)</span><span class="i18n lang-en">One-liner (desktop or server)</span></p>
-        <pre>curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh</pre>
-        <p class="steps-h"><span class="i18n lang-zh">或下载安装包</span><span class="i18n lang-en">Or grab a package</span></p>
-        <pre>sudo apt install ./cc-console-linux-x64.deb     # Debian/Ubuntu
+        <p class="steps-h"><span class="i18n lang-zh">① 桌面系统 —— 装 cc-console</span><span class="i18n lang-en">① Desktop — install cc-console</span></p>
+        <pre>sudo dpkg -i cc-console-linux-x64.deb
 # or: chmod +x cc-console-linux-x64.AppImage &amp;&amp; ./cc-console-linux-x64.AppImage</pre>
+        <p class="steps-h"><span class="i18n lang-zh">② 服务器终端(无界面)—— 装 cc-console</span><span class="i18n lang-en">② Server / terminal (headless) — install cc-console</span></p>
+        <pre>curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"</pre>
+        <p class="steps-h"><span class="i18n lang-zh">装依赖(桌面 / 服务器都需要)—— tmux + cloudflared,一条一条来</span><span class="i18n lang-en">Dependencies (both desktop &amp; server) — tmux + cloudflared, one at a time</span></p>
+        <pre>sudo apt install -y tmux
+sudo curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared</pre>
         <ol class="steps">
-          <li><span class="i18n lang-zh"><strong>装依赖。</strong></span><span class="i18n lang-en"><strong>Install deps.</strong></span> <pre>sudo apt install tmux</pre> <span class="i18n lang-zh">并确保 <code>claude</code> / <code>codex</code> / <code>gemini</code> 在 PATH。</span><span class="i18n lang-en">and make sure <code>claude</code> / <code>codex</code> / <code>gemini</code> is on your PATH.</span></li>
+          <li><span class="i18n lang-zh">确保 <code>claude</code> / <code>codex</code> / <code>gemini</code> 在 PATH;<code>cloudflared</code> 仅远程访问需要。</span><span class="i18n lang-en">Make sure <code>claude</code> / <code>codex</code> / <code>gemini</code> is on PATH; <code>cloudflared</code> is only needed for remote access.</span></li>
           <li><span class="i18n lang-zh"><strong>有桌面环境</strong>:直接打开 cc-console App,同 macOS。</span><span class="i18n lang-en"><strong>With a desktop:</strong> just open the cc-console app, same as macOS.</span></li>
           <li><span class="i18n lang-zh"><strong>无头服务器</strong>:直接运行 <code>cc-console</code>,从启动日志里拿到 <code>open: https://…?token=…</code>,在浏览器打开即可;远程连接走 <strong>🌐 远程页</strong>。</span><span class="i18n lang-en"><strong>Headless server:</strong> run <code>cc-console</code>, grab <code>open: https://…?token=…</code> from the startup log and open it in a browser; link remotely from the <strong>🌐 Remote</strong> page.</span></li>
         </ol>

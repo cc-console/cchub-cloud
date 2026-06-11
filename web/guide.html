@@ -103,11 +103,23 @@
     <div class="step">
       <div class="step-h"><span class="badge">1</span><div><h2><span class="i18n lang-zh">安装 cc-console</span><span class="i18n lang-en">Install cc-console</span></h2></div></div>
       <p class="t"><span class="i18n lang-zh"><b>桌面 app(推荐)</b>:从 <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a> 下载对应平台安装包,双击安装。</span><span class="i18n lang-en"><b>Desktop app (recommended):</b> download the installer for your platform from <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a> and run it.</span></p>
-      <p><span class="i18n lang-zh"><b>命令行 / 服务器</b>(macOS / Linux):</span><span class="i18n lang-en"><b>Command line / server</b> (macOS / Linux):</span></p>
+      <p><span class="i18n lang-zh"><b>macOS</b> 命令行:</span><span class="i18n lang-en"><b>macOS</b> command line:</span></p>
       <pre>curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh</pre>
       <div class="note warn"><span class="i18n lang-zh"><b>macOS 首次打开提示「已损坏」?</b> 这是未签名 app 被 Gatekeeper 拦截。把 app 拖到「应用程序」后执行一次:</span><span class="i18n lang-en"><b>“cc-console is damaged” on first open (macOS)?</b> The unsigned app is blocked by Gatekeeper. Drag it into Applications, then run once:</span><br>
         <code>xattr -dr com.apple.quarantine /Applications/cc-console.app</code></div>
-      <p style="margin-top:8px"><span class="i18n lang-zh"><b>运行依赖</b>:macOS/Linux 需要 <code>tmux</code>(<code>brew install tmux</code> / <code>sudo apt install tmux</code>)和你要用的 CLI(<code>claude</code> / <code>codex</code> / <code>gemini</code>)在 PATH 中;Windows 自带会话引擎(无需 tmux)。<b>开远程隧道</b>还需 <code>cloudflared</code>(mac <code>brew install cloudflared</code>,linux 见下方命令),桌面 app 也不自带;纯本机使用则不需要。</span><span class="i18n lang-en"><b>Requirements:</b> macOS/Linux need <code>tmux</code> (<code>brew install tmux</code> / <code>sudo apt install tmux</code>) and a CLI (<code>claude</code> / <code>codex</code> / <code>gemini</code>) on PATH; Windows ships its own session engine (no tmux). <b>Remote tunnels</b> also need <code>cloudflared</code> (mac: <code>brew install cloudflared</code>; Linux: see below) — not bundled with the desktop app; local-only use doesn't need it.</span></p>
+
+      <p class="t" style="margin-top:14px"><span class="i18n lang-zh"><b>Ubuntu / Linux</b> 分两种装法 —— 先装 cc-console,再单独装依赖:</span><span class="i18n lang-en"><b>Ubuntu / Linux</b> — two ways. Install cc-console first, then the dependencies separately:</span></p>
+      <p style="margin:8px 0 2px"><span class="i18n lang-zh">① <b>桌面系统</b> —— 下载 <code>.deb</code> 安装:</span><span class="i18n lang-en">① <b>Desktop</b> — install from the <code>.deb</code>:</span></p>
+      <pre>sudo dpkg -i cc-console-linux-x64.deb</pre>
+      <p style="margin:8px 0 2px"><span class="i18n lang-zh">② <b>服务器终端</b>(无界面)—— 用脚本装 cc-console:</span><span class="i18n lang-en">② <b>Server / terminal</b> (headless) — install cc-console with the script:</span></p>
+      <pre>curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh
+export PATH="$HOME/.local/bin:$PATH"</pre>
+
+      <p style="margin:12px 0 2px"><span class="i18n lang-zh"><b>装依赖(桌面 / 服务器都需要)</b> —— <code>tmux</code> 必装,<code>cloudflared</code> 仅远程访问需要,一条一条来:</span><span class="i18n lang-en"><b>Dependencies (both desktop &amp; server)</b> — <code>tmux</code> is required, <code>cloudflared</code> only for remote access, one command at a time:</span></p>
+      <pre>sudo apt install -y tmux
+sudo curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared</pre>
+      <p class="muted" style="margin-top:6px"><span class="i18n lang-zh">并确保你要用的 CLI(<code>claude</code> / <code>codex</code> / <code>gemini</code>)在 PATH 中。Windows 自带会话引擎,无需 tmux;纯本机使用不需要 cloudflared。</span><span class="i18n lang-en">Also make sure your CLI (<code>claude</code> / <code>codex</code> / <code>gemini</code>) is on PATH. Windows ships its own session engine (no tmux); local-only use doesn't need cloudflared.</span></p>
     </div>
 
     <div class="step">
