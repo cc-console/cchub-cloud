@@ -4,7 +4,7 @@ resolver = "2"
 
 [workspace.package]
 edition = "2021"
-version = "0.2.18"
+version = "0.2.19"
 license = "MIT"
 authors = ["zhifeng <zhifengwang686@gmail.com>"]
 rust-version = "1.78"

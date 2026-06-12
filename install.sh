@@ -15,7 +15,7 @@ os="$(uname -s)"
 arch="$(uname -m)"
 case "$os" in
   Darwin) plat="apple-darwin" ;;
-  Linux)  plat="unknown-linux-gnu" ;;
+  Linux)  plat="unknown-linux-musl" ;;   # static — runs on any glibc (old servers included)
   *) echo "✗ unsupported OS: $os (only macOS and Linux are supported)" >&2; exit 1 ;;
 esac
 case "$arch" in
