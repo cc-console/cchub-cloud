@@ -4,7 +4,7 @@
 
 # cc-console
 
-### 把你终端里的 AI 编码 agent，实时装进手机。
+### 把你终端里的 AI 编程 agent，实时装进手机。
 
 cc-console 把你电脑终端里正在跑的 **Claude Code / Codex / Gemini** 会话，实时镜像到手机、平板或任意浏览器。随时查看、一键接管、在任何地方回它的 Yes/No —— 会话永不掉线。
 
