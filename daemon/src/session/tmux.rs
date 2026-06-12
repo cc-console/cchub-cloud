@@ -64,17 +64,16 @@ impl TmuxSession {
                 args.push("-f");
                 args.push(c);
             }
-            args.extend(["new-session", "-d", "-s", name]);
-            // `-e KEY=VAL` seeds the new session's environment so the very first
-            // window's command (and every later window) inherits it.
-            let env_args: Vec<String> = env.iter().map(|(k, v)| format!("{k}={v}")).collect();
-            for e in &env_args {
-                args.push("-e");
-                args.push(e);
-            }
-            args.push(initial_cmd);
+            args.extend(["new-session", "-d", "-s", name, initial_cmd]);
+            // Seed the session env via the tmux SERVER's process environment rather
+            // than `new-session -e KEY=VAL`: `-e` was only added in tmux 3.0, and
+            // older tmux (2.x — still shipped by some distros / conda) aborts with
+            // `unknown option -- e`. The server this command starts inherits these,
+            // so the first window's command (claude) sees them; apply_env()
+            // (set-environment) covers later windows and an already-running server.
             let status = Command::new("tmux")
                 .args(&args)
+                .envs(env.iter())
                 .status()
                 .context("failed to spawn tmux new-session")?;
             if !status.success() {

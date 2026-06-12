@@ -232,7 +232,7 @@ dependencies = [
 
 [[package]]
 name = "cc-console-daemon"
-version = "0.2.20"
+version = "0.2.21"
 dependencies = [
  "anyhow",
  "axum",
@@ -257,7 +257,7 @@ dependencies = [
 
 [[package]]
 name = "cc-console-proto"
-version = "0.2.20"
+version = "0.2.21"
 dependencies = [
  "serde",
  "serde_json",

@@ -1,7 +1,7 @@
 {
   "name": "cc-console-app",
   "private": true,
-  "version": "0.2.20",
+  "version": "0.2.21",
   "description": "cc-console desktop shell (Tauri) — wraps the daemon as a native app",
   "scripts": {
     "sidecar": "sh scripts/prepare-sidecar.sh",
