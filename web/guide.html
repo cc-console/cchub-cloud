@@ -102,24 +102,27 @@
 
     <div class="step">
       <div class="step-h"><span class="badge">1</span><div><h2><span class="i18n lang-zh">安装 cc-console</span><span class="i18n lang-en">Install cc-console</span></h2></div></div>
-      <p class="t"><span class="i18n lang-zh"><b>桌面 app(推荐)</b>:从 <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a> 下载对应平台安装包,双击安装。</span><span class="i18n lang-en"><b>Desktop app (recommended):</b> download the installer for your platform from <a class="lnk" href="https://cc.cchub.cloud" target="_blank" rel="noopener">cc.cchub.cloud</a> and run it.</span></p>
-      <p><span class="i18n lang-zh"><b>macOS</b> 命令行:</span><span class="i18n lang-en"><b>macOS</b> command line:</span></p>
-      <pre>curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh</pre>
-      <div class="note warn"><span class="i18n lang-zh"><b>macOS 首次打开提示「已损坏」?</b> 这是未签名 app 被 Gatekeeper 拦截。把 app 拖到「应用程序」后执行一次:</span><span class="i18n lang-en"><b>“cc-console is damaged” on first open (macOS)?</b> The unsigned app is blocked by Gatekeeper. Drag it into Applications, then run once:</span><br>
-        <code>xattr -dr com.apple.quarantine /Applications/cc-console.app</code></div>
+      <p class="t"><span class="i18n lang-zh">从 <a class="lnk" href="https://cc.cchub.cloud/#download" target="_blank" rel="noopener">cc.cchub.cloud/#download</a> 下载对应平台安装包。下面分 <b>macOS / Windows / Ubuntu 桌面 / 服务器</b> 四种装法。</span><span class="i18n lang-en">Download the installer for your platform from <a class="lnk" href="https://cc.cchub.cloud/#download" target="_blank" rel="noopener">cc.cchub.cloud/#download</a>. Four flows below: <b>macOS / Windows / Ubuntu desktop / Server</b>.</span></p>
 
-      <p class="t" style="margin-top:14px"><span class="i18n lang-zh"><b>Ubuntu / Linux</b> 分两种装法 —— 先装 cc-console,再单独装依赖:</span><span class="i18n lang-en"><b>Ubuntu / Linux</b> — two ways. Install cc-console first, then the dependencies separately:</span></p>
-      <p style="margin:8px 0 2px"><span class="i18n lang-zh">① <b>桌面系统</b> —— 下载 <code>.deb</code> 安装:</span><span class="i18n lang-en">① <b>Desktop</b> — install from the <code>.deb</code>:</span></p>
-      <pre>sudo dpkg -i cc-console-linux-x64.deb</pre>
-      <p style="margin:8px 0 2px"><span class="i18n lang-zh">② <b>服务器终端</b>(无界面)—— 用脚本装 cc-console:</span><span class="i18n lang-en">② <b>Server / terminal</b> (headless) — install cc-console with the script:</span></p>
+      <p style="margin:14px 0 2px"><span class="i18n lang-zh">🍎 <b>macOS</b>(Apple Silicon,M1–M5)—— 拖进「应用程序」。App 暂未购买 Apple 签名,首次打开会提示「已损坏」,在「终端」运行一次解除拦截,之后正常双击:</span><span class="i18n lang-en">🍎 <b>macOS</b> (Apple Silicon, M1–M5) — drag into Applications. The app isn't Apple-signed yet, so the first open says “damaged”; run this once in Terminal, then double-click as normal:</span></p>
+      <pre>xattr -dr com.apple.quarantine /Applications/cc-console.app
+brew install tmux cloudflared   <span class="i18n lang-zh"># tmux 必装;cloudflared 仅远程访问需要</span><span class="i18n lang-en"># tmux required; cloudflared only for remote</span></pre>
+
+      <p style="margin:12px 0 2px"><span class="i18n lang-zh">🪟 <b>Windows</b> —— 双击 <code>.exe</code> 安装(如遇不安全提示,点「更多信息 → 仍要运行」)。自带会话引擎,无需 tmux。</span><span class="i18n lang-en">🪟 <b>Windows</b> — double-click the <code>.exe</code> (if it warns it's unsafe, click “More info → Run anyway”). Built-in session engine, no tmux.</span></p>
+
+      <p style="margin:12px 0 2px"><span class="i18n lang-zh">🐧 <b>Ubuntu 桌面</b> —— 下载 <code>.deb</code> 双击安装,再装依赖 tmux + cloudflared:</span><span class="i18n lang-en">🐧 <b>Ubuntu desktop</b> — install the <code>.deb</code>, then the deps tmux + cloudflared:</span></p>
+      <pre>sudo dpkg -i cc-console-linux-x64.deb
+sudo apt install -y tmux
+sudo curl -fL --progress-bar \
+  https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  -o /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared
+cloudflared --version</pre>
+
+      <p style="margin:12px 0 2px"><span class="i18n lang-zh">🖥️ <b>服务器</b>(无界面)—— 先确认能跑通 claude/codex/gemini,再装 tmux + cloudflared(同上),然后用脚本装 cc-console:</span><span class="i18n lang-en">🖥️ <b>Server</b> (headless) — make sure claude/codex/gemini already run, install tmux + cloudflared (same as above), then install cc-console with the script:</span></p>
       <pre>curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh
 export PATH="$HOME/.local/bin:$PATH"</pre>
-
-      <p style="margin:12px 0 2px"><span class="i18n lang-zh"><b>装依赖(桌面 / 服务器都需要)</b> —— <code>tmux</code> 必装,<code>cloudflared</code> 仅远程访问需要,一条一条来:</span><span class="i18n lang-en"><b>Dependencies (both desktop &amp; server)</b> — <code>tmux</code> is required, <code>cloudflared</code> only for remote access, one command at a time:</span></p>
-      <pre>sudo apt install -y tmux
-sudo curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
-sudo chmod +x /usr/local/bin/cloudflared</pre>
-      <p class="muted" style="margin-top:6px"><span class="i18n lang-zh">并确保你要用的 CLI(<code>claude</code> / <code>codex</code> / <code>gemini</code>)在 PATH 中。Windows 自带会话引擎,无需 tmux;纯本机使用不需要 cloudflared。</span><span class="i18n lang-en">Also make sure your CLI (<code>claude</code> / <code>codex</code> / <code>gemini</code>) is on PATH. Windows ships its own session engine (no tmux); local-only use doesn't need cloudflared.</span></p>
+      <p class="muted" style="margin-top:8px"><span class="i18n lang-zh">服务器接着走 <b>第 3 步</b> 的「设备码绑定」。并确保你要用的 CLI(<code>claude</code> / <code>codex</code> / <code>gemini</code>)在 PATH 中;纯本机使用不需要 cloudflared。</span><span class="i18n lang-en">On a server, continue with the <b>device-code binding in Step 3</b>. Keep your CLI (<code>claude</code> / <code>codex</code> / <code>gemini</code>) on PATH; local-only use doesn't need cloudflared.</span></p>
     </div>
 
     <div class="step">
@@ -142,19 +145,11 @@ sudo chmod +x /usr/local/bin/cloudflared</pre>
         <pre>cc-console link          <span class="i18n lang-zh"># 粘入 ccd_… 设备码</span><span class="i18n lang-en"># paste the ccd_… device code</span>
 cc-console               <span class="i18n lang-zh"># 启动，managed 隧道自动拉起</span><span class="i18n lang-en"># start; the managed tunnel comes up</span></pre>
         <span class="i18n lang-zh">浏览器打开日志里的 <code>https://你的名字.cchub.cloud/?token=…</code> 即可。设备码会保存,下次开机自动重连。</span><span class="i18n lang-en">Open the <code>https://your-name.cchub.cloud/?token=…</code> printed in the logs. The code is saved and reconnects on the next boot.</span>
-        <p style="margin:10px 0 4px"><span class="i18n lang-zh"><b>常驻</b>(断开 SSH 也不掉,推荐用 systemd 用户服务):</span><span class="i18n lang-en"><b>Keep it running</b> after you disconnect (recommended — a systemd user service):</span></p>
-        <pre>mkdir -p ~/.config/systemd/user
-cat > ~/.config/systemd/user/cc-console.service &lt;&lt;EOF
-[Unit]
-After=network-online.target
-[Service]
-ExecStart=%h/.local/bin/cc-console
-Restart=on-failure
-[Install]
-WantedBy=default.target
-EOF
-systemctl --user enable --now cc-console
-sudo loginctl enable-linger $USER</pre></div>
+        <p style="margin:10px 0 4px"><span class="i18n lang-zh"><b>常驻</b>(断开 SSH 也不掉;<code>nohup</code> —— 容器无 systemd 也能用):</span><span class="i18n lang-en"><b>Keep it running</b> after you disconnect (<code>nohup</code> — works even in containers with no systemd):</span></p>
+        <pre>export PATH="$HOME/.local/bin:$PATH"
+nohup cc-console &gt; ~/cc-console.log 2&gt;&amp;1 &amp;
+disown</pre>
+        <p style="margin:8px 0 0"><span class="i18n lang-zh">看日志 / 地址:<code>tail -f ~/cc-console.log</code> · 是否在跑:<code>pgrep -af cc-console</code> · 停止:<code>pkill -f cc-console</code></span><span class="i18n lang-en">Logs / address: <code>tail -f ~/cc-console.log</code> · running? <code>pgrep -af cc-console</code> · stop: <code>pkill -f cc-console</code></span></p></div>
     </div>
 
     <div class="step">

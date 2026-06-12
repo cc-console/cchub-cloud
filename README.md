@@ -41,59 +41,91 @@ through anyone else's servers.**
 
 ## Install
 
-> Need `tmux` on macOS/Linux, plus the agent CLI you use (`claude` / `codex` /
-> `gemini`) on your `PATH`. Remote access additionally needs `cloudflared`.
+> 📖 **Full step-by-step guide (with screenshots):** **[Operation Manual](https://my.feishu.cn/docx/ZFoKdHWU1o1mcQxzqNWciXu0nGe)**
 
-### macOS
-1. Download the **[.dmg](https://cc.cchub.cloud/#download)** and drag **cc-console** into Applications.
-2. The build isn't code-signed yet, so the first launch is blocked. **Open a new Terminal window** (Spotlight → type "Terminal") and run the two commands below:
-   ```bash
-   xattr -dr com.apple.quarantine /Applications/cc-console.app   # clear the unsigned-app block
-   brew install tmux cloudflared                                 # tmux is required; cloudflared only for remote access
-   ```
-3. Now open **cc-console** from Applications (or right-click the app → **Open**).
+### 1. macOS (Apple Silicon, M1–M5)
+**Step 1 — Download** the installer from **[cc.cchub.cloud/#download](https://cc.cchub.cloud/#download)** and drag **cc-console** into Applications.
 
-### Windows
-Download the **[.exe installer](https://cc.cchub.cloud/#download)** and run it
-(SmartScreen → More info → Run anyway). A built-in session engine — no tmux needed.
+**Step 2 — First launch.** To keep development costs down the app isn't Apple-signed yet, so macOS blocks it as "damaged". Run this once in Terminal, then double-click as normal:
+```bash
+xattr -dr com.apple.quarantine /Applications/cc-console.app
+```
 
-### Ubuntu — desktop
-1. Download the **[.deb](https://cc.cchub.cloud/#download)** (or the AppImage) and install it:
-   ```bash
-   sudo dpkg -i cc-console-linux-x64.deb
-   ```
-2. Install the dependencies — **tmux** (required) and **cloudflared** (only for remote access), one command at a time:
-   ```bash
-   sudo apt install -y tmux
-   sudo curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
-   sudo chmod +x /usr/local/bin/cloudflared
-   ```
-   Also make sure the agent CLI you use (`claude` / `codex` / `gemini`) is on your `PATH`.
-3. Launch **cc-console** from your applications menu.
+**Step 3 — Dependencies.** `tmux` is required to run sessions; `cloudflared` is only needed for phone/remote access:
+```bash
+brew install tmux cloudflared
+```
+Also keep the agent CLI you use (`claude` / `codex` / `gemini`) on your `PATH`.
 
-### Ubuntu — server (terminal / headless)
-Reach a remote box from your phone via your own `yourname.cchub.cloud` address. First sign up at <https://cc.cchub.cloud> → set a name → **Generate device token** (`ccd_…`). Then SSH in and run each block:
+### 2. Windows
+**Step 1 — Download** the **[.exe installer](https://cc.cchub.cloud/#download)**.
 
-**1) Dependencies — tmux + cloudflared (one command at a time):**
+**Step 2 — Install.** Double-click it; if SmartScreen warns it's unsafe, click **More info → Run anyway**. A built-in session engine is included — no tmux needed.
+
+**Step 3 — Launch** cc-console from the Start menu.
+
+### 3. Ubuntu — desktop
+**Step 1 — Download** the **[.deb](https://cc.cchub.cloud/#download)** and double-click to install (or `sudo dpkg -i cc-console-linux-x64.deb`).
+
+**Step 2 — Install tmux** (required to run sessions):
 ```bash
 sudo apt install -y tmux
-sudo curl -fsSL https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/local/bin/cloudflared
-sudo chmod +x /usr/local/bin/cloudflared
 ```
 
-**2) cc-console (on its own):**
+**Step 3 — Install cloudflared** (the tunnel tool; only needed for remote access). You can also download it from GitHub locally and upload it to the box:
+```bash
+sudo curl -fL --progress-bar \
+  https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  -o /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared
+cloudflared --version
+```
+
+**Step 4 — Launch** cc-console from your applications menu. Keep your agent CLI (`claude` / `codex` / `gemini`) on `PATH`.
+
+### 4. Server (Ubuntu, headless)
+> Prerequisite: the server can already run `claude` / `codex` / `gemini` (set up a proxy first if the AI APIs aren't reachable).
+
+**Step 1 — Install tmux:**
+```bash
+sudo apt install -y tmux
+```
+
+**Step 2 — Install cloudflared** (or download from GitHub locally and upload it):
+```bash
+sudo curl -fL --progress-bar \
+  https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 \
+  -o /usr/local/bin/cloudflared
+sudo chmod +x /usr/local/bin/cloudflared
+cloudflared --version
+```
+
+**Step 3 — Install cc-console and add it to PATH:**
 ```bash
 curl -fsSL https://github.com/cc-console/releases/releases/latest/download/install.sh | sh
-export PATH="$HOME/.local/bin:$PATH"     # if it warns it's not on PATH
+export PATH="$HOME/.local/bin:$PATH"
 ```
 
-**3) Bind the device code + run:**
+**Step 4 — Bind your device code.** Sign up at **[app.cchub.cloud/account](https://app.cchub.cloud/account)**, pick a username (it becomes your `yourname.cchub.cloud` address), click **Generate device token** to get a `ccd_…` code, then on the server paste it in:
 ```bash
 cc-console link        # paste the ccd_… device code
-cc-console             # opens at https://yourname.cchub.cloud
 ```
 
-> Prerequisite: the server must reach the AI APIs (set up a proxy if needed) and you should be able to run `claude` yourself first. Full server guide (proxy, systemd persistence): **[cc.cchub.cloud/#server](https://cc.cchub.cloud/#server)**.
+**Step 5 — Run.** Start the tool; it prints a `https://yourname.cchub.cloud/?token=…` address:
+```bash
+cc-console
+```
+
+**Step 6 — Open from any device.** Visit that `https://yourname.cchub.cloud/?token=…` URL on your phone or browser to drive the server's claude / codex / gemini live.
+
+**Keep it running after you log out** (nohup — works even in containers with no systemd):
+```bash
+export PATH="$HOME/.local/bin:$PATH"
+nohup cc-console > ~/cc-console.log 2>&1 &
+disown
+```
+- Logs / address: `tail -f ~/cc-console.log`  ·  Running? `pgrep -af cc-console`
+- Stop: `pkill -f cc-console`  ·  Restart: `pkill -f cc-console; sleep 1; nohup cc-console > ~/cc-console.log 2>&1 & disown`
 
 ## How it works
 
